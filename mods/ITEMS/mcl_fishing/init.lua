@@ -1,11 +1,6 @@
 --Fishing Rod, Bobber, and Flying Bobber mechanics and Bobber artwork by Rootyjr.
 
-local S = minetest.get_translator("mcl_fishing")
-local mod_throwing = minetest.get_modpath("mcl_throwing")
-
-local entity_mapping = {
-	["mcl_fishing:bobber"] = "mcl_fishing:bobber_entity",
-}
+local S = minetest.get_translator(minetest.get_current_modname())
 
 local bobber_ENTITY={
 	physical = false,
@@ -43,7 +38,6 @@ local fish = function(itemstack, player, pointed_thing)
 		local ent = nil
 		local noent = true
 
-
 		local durability = 65
 		local unbreaking = mcl_enchanting.get_enchantment(itemstack, "unbreaking")
 		if unbreaking > 0 then
@@ -61,7 +55,6 @@ local fish = function(itemstack, player, pointed_thing)
 							local itemname
 							local items
 							local itemcount = 1
-							local itemwear = 0
 							local pr = PseudoRandom(os.time() * math.random(1, 100))
 							local r = pr:next(1, 100)
 							local fish_values = {85, 84.8, 84.7, 84.5}
@@ -78,7 +71,9 @@ local fish = function(itemstack, player, pointed_thing)
 										{ itemstring = "mcl_fishing:salmon_raw", weight = 25 },
 										{ itemstring = "mcl_fishing:clownfish_raw", weight = 2 },
 										{ itemstring = "mcl_fishing:pufferfish_raw", weight = 13 },
-									}
+									},
+									stacks_min = 1,
+									stacks_max = 1,
 								}, pr)
 							elseif r <= junk_value then
 								-- Junk
@@ -95,21 +90,29 @@ local fish = function(itemstack, player, pointed_thing)
 										{ itemstring = "mcl_mobitems:bone", weight = 10 },
 										{ itemstring = "mcl_dye:black", weight = 1, amount_min = 10, amount_max = 10 },
 										{ itemstring = "mcl_mobitems:string", weight = 10 }, -- TODO: Tripwire Hook
-									}
+									},
+									stacks_min = 1,
+									stacks_max = 1,
 								}, pr)
 							else
 								-- Treasure
 								items = mcl_loot.get_loot({
 									items = {
-										-- TODO: Enchanted Bow
-										{ itemstring = "mcl_bows:bow", wear_min = 49144, wear_max = 65535 }, -- 75%-100% damage
-										{ itemstack = mcl_enchanting.get_randomly_enchanted_book(30, true, true)},
-										-- TODO: Enchanted Fishing Rod
-										{ itemstring = "mcl_fishing:fishing_rod", wear_min = 49144, wear_max = 65535 }, -- 75%-100% damage
+										{ itemstring = "mcl_bows:bow", wear_min = 49144, wear_max = 65535, func = function(stack, pr)
+											mcl_enchanting.enchant_randomly(stack, 30, true, false, false, pr)
+										end }, -- 75%-100% damage
+										{ itemstring = "mcl_books:book", func = function(stack, pr)
+											mcl_enchanting.enchant_randomly(stack, 30, true, true, false, pr)
+										end },
+										{ itemstring = "mcl_fishing:fishing_rod", wear_min = 49144, wear_max = 65535, func = function(stack, pr)
+											mcl_enchanting.enchant_randomly(stack, 30, true, false, false, pr)
+										end }, -- 75%-100% damage
 										{ itemstring = "mcl_mobs:nametag", },
 										{ itemstring = "mcl_mobitems:saddle", },
 										{ itemstring = "mcl_flowers:waterlily", },
-									}
+									},
+									stacks_min = 1,
+									stacks_max = 1,
 								}, pr)
 							end
 							local item
@@ -124,8 +127,8 @@ local fish = function(itemstack, player, pointed_thing)
 							else
 								minetest.add_item(pos, item)
 							end
-							if mcl_experience.throw_experience then
-								mcl_experience.throw_experience(pos, math.random(1,6))
+							if mcl_experience.throw_xp then
+								mcl_experience.throw_xp(pos, math.random(1,6))
 							end
 
 							if not minetest.is_creative_enabled(player:get_player_name()) then
@@ -173,7 +176,7 @@ local fish = function(itemstack, player, pointed_thing)
 		if noent == true then
 			local playerpos = player:get_pos()
 			local dir = player:get_look_dir()
-			local obj = mcl_throwing.throw("mcl_throwing:flying_bobber", {x=playerpos.x, y=playerpos.y+1.5, z=playerpos.z}, dir, 15, player:get_player_name())
+			mcl_throwing.throw("mcl_fishing:flying_bobber", {x=playerpos.x, y=playerpos.y+1.5, z=playerpos.z}, dir, 15, player:get_player_name())
 		end
 end
 
@@ -197,7 +200,7 @@ local bobber_on_step = function(self, dtime)
 	end
 	local wield = player:get_wielded_item()
 	--Check if player is nearby
-	if self.player ~= nil and player ~= nil then
+	if self.player and player then
 		--Destroy bobber if item not wielded.
 		if ((not wield) or (minetest.get_item_group(wield:get_name(), "fishing_rod") <= 0)) then
 			self.object:remove()
@@ -295,13 +298,54 @@ bobber_ENTITY.on_step = bobber_on_step
 
 minetest.register_entity("mcl_fishing:bobber_entity", bobber_ENTITY)
 
+local flying_bobber_ENTITY={
+	physical = false,
+	timer=0,
+	textures = {"mcl_fishing_bobber.png"}, --FIXME: Replace with correct texture.
+	visual_size = {x=0.5, y=0.5},
+	collisionbox = {0,0,0,0,0,0},
+	pointable = false,
+
+	get_staticdata = mcl_throwing.get_staticdata,
+	on_activate = mcl_throwing.on_activate,
+
+	_lastpos={},
+	_thrower = nil,
+	objtype="fishing",
+}
+
+-- Movement function of flying bobber
+local function flying_bobber_on_step(self, dtime)
+	self.timer=self.timer+dtime
+	local pos = self.object:get_pos()
+	local node = minetest.get_node(pos)
+	local def = minetest.registered_nodes[node.name]
+	--local player = minetest.get_player_by_name(self._thrower)
+
+	-- Destroy when hitting a solid node
+	if self._lastpos.x~=nil then
+		if (def and (def.walkable or def.liquidtype == "flowing" or def.liquidtype == "source")) or not def then
+			local ent = minetest.add_entity(self._lastpos, "mcl_fishing:bobber_entity"):get_luaentity()
+			ent.player = self._thrower
+			ent.child = true
+			self.object:remove()
+			return
+		end
+	end
+	self._lastpos={x=pos.x, y=pos.y, z=pos.z} -- Set lastpos-->Node will be added at last pos outside the node
+end
+
+flying_bobber_ENTITY.on_step = flying_bobber_on_step
+
+minetest.register_entity("mcl_fishing:flying_bobber_entity", flying_bobber_ENTITY)
+
+mcl_throwing.register_throwable_object("mcl_fishing:flying_bobber", "mcl_fishing:flying_bobber_entity", 5)
+
 -- If player leaves area, remove bobber.
 minetest.register_on_leaveplayer(function(player)
 	local objs = minetest.get_objects_inside_radius(player:get_pos(), 250)
-	local num = 0
 	local ent = nil
 	local noent = true
-
 	for n = 1, #objs do
 		ent = objs[n]:get_luaentity()
 		if ent then
@@ -354,17 +398,17 @@ minetest.register_tool("mcl_fishing:fishing_rod", {
 minetest.register_craft({
 	output = "mcl_fishing:fishing_rod",
 	recipe = {
-		{'','','mcl_core:stick'},
-		{'','mcl_core:stick','mcl_mobitems:string'},
-		{'mcl_core:stick','','mcl_mobitems:string'},
+		{"","","mcl_core:stick"},
+		{"","mcl_core:stick","mcl_mobitems:string"},
+		{"mcl_core:stick","","mcl_mobitems:string"},
 	}
 })
 minetest.register_craft({
 	output = "mcl_fishing:fishing_rod",
 	recipe = {
-		{'mcl_core:stick', '', ''},
-		{'mcl_mobitems:string', 'mcl_core:stick', ''},
-		{'mcl_mobitems:string','','mcl_core:stick'},
+		{"mcl_core:stick", "", ""},
+		{"mcl_mobitems:string", "mcl_core:stick", ""},
+		{"mcl_mobitems:string","","mcl_core:stick"},
 	}
 })
 minetest.register_craft({
@@ -449,7 +493,7 @@ minetest.register_craftitem("mcl_fishing:clownfish_raw", {
 
 minetest.register_craftitem("mcl_fishing:pufferfish_raw", {
 	description = S("Pufferfish"),
-	_tt_help = minetest.colorize("#FFFF00", S("Very poisonous")),
+	_tt_help = minetest.colorize(mcl_colors.YELLOW, S("Very poisonous")),
 	_doc_items_longdesc = S("Pufferfish are a common species of fish and can be obtained by fishing. They can technically be eaten, but they are very bad for humans. Eating a pufferfish only restores 1 hunger point and will poison you very badly (which drains your health non-fatally) and causes serious food poisoning (which increases your hunger)."),
 	inventory_image = "mcl_fishing_pufferfish_raw.png",
 	on_place = minetest.item_eat(1),

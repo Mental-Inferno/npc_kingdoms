@@ -40,10 +40,9 @@ function mcl_loot.get_loot(loot_definitions, pr)
 		total_weight = total_weight + (loot_definitions.items[i].weight or 1)
 	end
 
-	local stacks_min = loot_definitions.stacks_min
-	local stacks_max = loot_definitions.stacks_max
-	if not stacks_min then stacks_min = 1 end
-	if not stacks_max then stacks_max = 1 end
+	--local stacks_min = loot_definitions.stacks_min or 1
+	--local stacks_max = loot_definitions.stacks_max or 1
+
 	local stacks = pr:next(loot_definitions.stacks_min, loot_definitions.stacks_max)
 	for s=1, stacks do
 		local r = pr:next(1, total_weight)
@@ -59,26 +58,27 @@ function mcl_loot.get_loot(loot_definitions, pr)
 		end
 		if item then
 			local itemstring = item.itemstring
-			local itemstack = item.itemstack
+
 			if itemstring then
+				local stack = ItemStack(itemstring)
+
 				if item.amount_min and item.amount_max then
-					itemstring = itemstring .. " " .. pr:next(item.amount_min, item.amount_max)
+					stack:set_count(pr:next(item.amount_min, item.amount_max))
 				end
+
 				if item.wear_min and item.wear_max then
 					-- Sadly, PseudoRandom only allows very narrow ranges, so we set wear in steps of 10
 					local wear_min = math.floor(item.wear_min / 10)
 					local wear_max = math.floor(item.wear_max / 10)
-					local wear = pr:next(wear_min, wear_max) * 10
 
-					if not item.amount_min and not item.amount_max then
-						itemstring = itemstring .. " 1"
-					end
-
-					itemstring = itemstring .. " " .. tostring(wear)
+					stack:set_wear(pr:next(wear_min, wear_max) * 10)
 				end
-				table.insert(items, itemstring)
-			elseif itemstack then
-				table.insert(items, itemstack)
+
+				if item.func then
+					item.func(stack, pr)
+				end
+
+				table.insert(items, stack)
 			else
 				minetest.log("error", "[mcl_loot] INTERNAL ERROR! Failed to select random loot item!")
 			end

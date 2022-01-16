@@ -3,7 +3,7 @@
 --made for MC like Survival game
 --License for code WTFPL and otherwise stated in readmes
 
-local S = minetest.get_translator("mobs_mc")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 --###################
 --################### HORSE
@@ -38,9 +38,9 @@ end
 local can_equip_horse_armor = function(entity_id)
 	return entity_id == "mobs_mc:horse" or entity_id == "mobs_mc:skeleton_horse" or entity_id == "mobs_mc:zombie_horse"
 end
-local can_equip_chest = function(entity_id)
+--[[local can_equip_chest = function(entity_id)
 	return entity_id == "mobs_mc:mule" or entity_id == "mobs_mc:donkey"
-end
+end]]
 local can_breed = function(entity_id)
 	return entity_id == "mobs_mc:horse" or "mobs_mc:mule" or entity_id == "mobs_mc:donkey"
 end
@@ -83,10 +83,15 @@ end
 
 -- Horse
 local horse = {
+	description = S("Horse"),
 	type = "animal",
 	spawn_class = "passive",
 	visual = "mesh",
 	mesh = "mobs_mc_horse.b3d",
+	rotate = 270,
+	walk_velocity = 1,
+	run_velocity = 8,
+	skittish = true,
 	visual_size = {x=3.0, y=3.0},
 	collisionbox = {-0.69825, -0.01, -0.69825, 0.69825, 1.59, 0.69825},
 	animation = {
@@ -96,7 +101,7 @@ local horse = {
 		walk_speed = 25,
 		walk_start = 0,
 		walk_end = 40,
-		run_speed = 60,
+		run_speed = 120,
 		run_start = 0,
 		run_end = 40,
 	},
@@ -113,7 +118,8 @@ local horse = {
 	fly = false,
 	walk_chance = 60,
 	view_range = 16,
-	follow = mobs_mc.follow.horse,
+	follow = "mcl_farming:wheat_item",
+	follow_distance = 3,
 	passive = true,
 	hp_min = 15,
 	hp_max = 30,
@@ -157,10 +163,31 @@ local horse = {
 			self._regentimer = 0
 		end
 
-		-- if driver present allow control of horse
-		if self.driver then
+		-- Some weird human is riding. Buck them off?
+		if self.driver and not self.tamed and self.buck_off_time <= 0 then
+			if math.random() < 0.2 then
+				mobs.detach(self.driver, {x = 1, y = 0, z = 1})
+				-- TODO bucking animation
+			else
+				-- Nah, can't be bothered. Think about it again in one second
+				self.buck_off_time = 20
+			end
+		end
 
-			mobs.drive(self, "walk", "stand", false, dtime)
+		-- Tick the timer for trying to buck the player off
+		if self.buck_off_time then
+			if self.driver then
+				self.buck_off_time = self.buck_off_time - 1
+			else
+				-- Player isn't riding anymore so no need to count
+				self.buck_off_time = nil
+			end
+		end
+
+		-- if driver present and horse has a saddle allow control of horse
+		if self.driver and self._saddle then
+
+			mobs.drive(self, "run", "stand", false, dtime)
 
 			return false -- skip rest of mob functions
 		end
@@ -191,6 +218,73 @@ local horse = {
 		local item = clicker:get_wielded_item()
 		local iname = item:get_name()
 		local heal = 0
+
+		--sneak click to breed the horse/feed it
+		if self.owner and self.owner == clicker:get_player_name() then
+			--attempt to enter breed state
+			if mobs.enter_breed_state(self,clicker) then
+				return
+			end
+		end
+
+		--don't do any other logic with the baby
+		--make baby grow faster
+		if self.baby then
+			mobs.make_baby_grow_faster(self,clicker)
+			return
+		end
+
+		-- Taming
+		self.temper = self.temper or (math.random(1,100))
+
+		if not self.tamed then
+			local temper_increase = 0
+
+			-- Feeding, intentionally not using mobs:feed_tame because horse taming is
+			-- different and more complicated
+			if (iname == mobs_mc.items.sugar) then
+				temper_increase = 3
+			elseif (iname == mobs_mc.items.wheat) then
+				temper_increase = 3
+			elseif (iname == mobs_mc.items.apple) then
+				temper_increase = 3
+			elseif (iname == mobs_mc.items.golden_carrot) then
+				temper_increase = 5
+			elseif (iname == mobs_mc.items.golden_apple) then
+				temper_increase = 10
+			-- Trying to ride
+			elseif not self.driver then
+				self.object:set_properties({stepheight = 1.1})
+				mobs.attach(self, clicker)
+				self.buck_off_time = 40 -- TODO how long does it take in minecraft?
+				if self.temper > 100 then
+					self.tamed = true -- NOTE taming can only be finished by riding the horse
+					mobs.tamed_effect(self)
+					if not self.owner or self.owner == "" then
+						self.owner = clicker:get_player_name()
+					end
+				end
+				temper_increase = 5
+
+			-- Clicking on the horse while riding ==> unmount
+			elseif self.driver and self.driver == clicker then
+				mobs.detach(clicker, {x = 1, y = 0, z = 1})
+			end
+
+			-- If nothing happened temper_increase = 0 and addition does nothing
+			self.temper = self.temper + temper_increase
+
+			--give the player some kind of idea
+			--of what's happening with the horse's temper
+			if self.temper <= 100 then
+				mobs.feed_effect(self)
+			else
+				mobs.tamed_effect(self)
+			end
+
+			return
+		end
+
 		if can_breed(self.name) then
 			-- Breed horse with golden apple or golden carrot
 			if (iname == mobs_mc.items.golden_apple) then
@@ -202,7 +296,8 @@ local horse = {
 				return
 			end
 		end
-		-- Feed/tame with anything else
+		-- Feed with anything else
+		-- TODO heal amounts don't work
 		if (iname == mobs_mc.items.sugar) then
 			heal = 1
 		elseif (iname == mobs_mc.items.wheat) then
@@ -212,18 +307,14 @@ local horse = {
 		elseif (iname == mobs_mc.items.hay_bale) then
 			heal = 20
 		end
-		if heal > 0 and mobs:feed_tame(self, clicker, heal, false, true) then
-			return
-		end
-
-		if mobs:protect(self, clicker) then
+		if heal > 0 and mobs:feed_tame(self, clicker, heal, false, false) then
 			return
 		end
 
 		-- Make sure tamed horse is mature and being clicked by owner only
 		if self.tamed and not self.child and self.owner == clicker:get_player_name() then
 
-			local inv = clicker:get_inventory()
+			--local inv = clicker:get_inventory()
 
 			-- detatch player already riding horse
 			if self.driver and clicker == self.driver then
@@ -291,9 +382,6 @@ local horse = {
 				self.object:set_properties({stepheight = 1.1})
 				mobs.attach(self, clicker)
 
-			-- Used to capture horse
-			elseif not self.driver and iname ~= "" then
-				mobs:capture_mob(self, clicker, 0, 5, 60, false, nil)
 			end
 		end
 	end,
@@ -351,54 +439,11 @@ local horse = {
 
 mobs:register_mob("mobs_mc:horse", horse)
 
--- Skeleton horse
-local skeleton_horse = table.copy(horse)
-skeleton_horse.breath_max = -1
-skeleton_horse.armor = {undead = 100, fleshy = 100}
-skeleton_horse.textures = {{"blank.png", "mobs_mc_horse_skeleton.png", "blank.png"}}
-skeleton_horse.drops = {
-	{name = mobs_mc.items.bone,
-	chance = 1,
-	min = 0,
-	max = 2,},
-}
-skeleton_horse.sounds = {
-	random = "mobs_mc_skeleton_random",
-	death = "mobs_mc_skeleton_death",
-	damage = "mobs_mc_skeleton_hurt",
-	eat = "mobs_mc_animal_eat_generic",
-	base_pitch = 0.95,
-	distance = 16,
-}
-skeleton_horse.harmed_by_heal = true
-mobs:register_mob("mobs_mc:skeleton_horse", skeleton_horse)
-
--- Zombie horse
-local zombie_horse = table.copy(horse)
-zombie_horse.breath_max = -1
-zombie_horse.armor = {undead = 100, fleshy = 100}
-zombie_horse.textures = {{"blank.png", "mobs_mc_horse_zombie.png", "blank.png"}}
-zombie_horse.drops = {
-	{name = mobs_mc.items.rotten_flesh,
-	chance = 1,
-	min = 0,
-	max = 2,},
-}
-zombie_horse.sounds = {
-	random = "mobs_mc_horse_random",
-	-- TODO: Separate damage sound
-	damage = "mobs_mc_horse_death",
-	death = "mobs_mc_horse_death",
-	eat = "mobs_mc_animal_eat_generic",
-	base_pitch = 0.5,
-	distance = 16,
-}
-zombie_horse.harmed_by_heal = true
-mobs:register_mob("mobs_mc:zombie_horse", zombie_horse)
 
 -- Donkey
 local d = 0.86 -- donkey scale
 local donkey = table.copy(horse)
+donkey.description = S("Donkey")
 donkey.textures = {{"blank.png", "mobs_mc_donkey.png", "blank.png"}}
 donkey.animation = {
 	speed_normal = 25,
@@ -429,6 +474,7 @@ mobs:register_mob("mobs_mc:donkey", donkey)
 -- Mule
 local m = 0.94
 local mule = table.copy(donkey)
+mule.description = S("Mule")
 mule.textures = {{"blank.png", "mobs_mc_mule.png", "blank.png"}}
 mule.visual_size = { x=horse.visual_size.x*m, y=horse.visual_size.y*m }
 mule.sounds = table.copy(donkey.sounds)
@@ -445,12 +491,91 @@ mobs:register_mob("mobs_mc:mule", mule)
 
 --===========================
 --Spawn Function
-mobs:spawn_specific("mobs_mc:horse", mobs_mc.spawn.grassland_savanna, {"air"}, 0, minetest.LIGHT_MAX+1, 30, 15000, 4, mobs_mc.spawn_height.water+3, mobs_mc.spawn_height.overworld_max)
-mobs:spawn_specific("mobs_mc:donkey", mobs_mc.spawn.grassland_savanna, {"air"}, 0, minetest.LIGHT_MAX+1, 30, 15000, 4, mobs_mc.spawn_height.water+3, mobs_mc.spawn_height.overworld_max)
+mobs:spawn_specific(
+"mobs_mc:horse",
+"overworld",
+"ground",
+{
+	"FlowerForest_beach",
+	"Forest_beach",
+	"StoneBeach",
+	"ColdTaiga_beach_water",
+	"Taiga_beach",
+	"Savanna_beach",
+	"Plains_beach",
+	"ExtremeHills_beach",
+	"ColdTaiga_beach",
+	"Swampland_shore",
+	"JungleM_shore",
+	"Jungle_shore",
+	"MesaPlateauFM_sandlevel",
+	"MesaPlateauF_sandlevel",
+	"MesaBryce_sandlevel",
+	"Mesa_sandlevel",
+	"Mesa",
+	"FlowerForest",
+	"Swampland",
+	"Taiga",
+	"ExtremeHills",
+	"Jungle",
+	"Savanna",
+	"BirchForest",
+	"MegaSpruceTaiga",
+	"MegaTaiga",
+	"ExtremeHills+",
+	"Forest",
+	"Plains",
+	"Desert",
+	"ColdTaiga",
+	"IcePlainsSpikes",
+	"SunflowerPlains",
+	"IcePlains",
+	"RoofedForest",
+	"ExtremeHills+_snowtop",
+	"MesaPlateauFM_grasstop",
+	"JungleEdgeM",
+	"ExtremeHillsM",
+	"JungleM",
+	"BirchForestM",
+	"MesaPlateauF",
+	"MesaPlateauFM",
+	"MesaPlateauF_grasstop",
+	"MesaBryce",
+	"JungleEdge",
+	"SavannaM",
+},
+0,
+minetest.LIGHT_MAX+1,
+30,
+15000,
+4,
+mobs_mc.spawn_height.water+3,
+mobs_mc.spawn_height.overworld_max)
+
+
+mobs:spawn_specific(
+"mobs_mc:donkey",
+"overworld",
+"ground",
+{
+"Mesa",
+"MesaPlateauFM_grasstop",
+"MesaPlateauF",
+"MesaPlateauFM",
+"MesaPlateauF_grasstop",
+"MesaBryce",
+},
+0,
+minetest.LIGHT_MAX+1,
+30,
+15000,
+4,
+mobs_mc.spawn_height.water+3,
+mobs_mc.spawn_height.overworld_max)
 
 -- spawn eggs
 mobs:register_egg("mobs_mc:horse", S("Horse"), "mobs_mc_spawn_icon_horse.png", 0)
 mobs:register_egg("mobs_mc:skeleton_horse", S("Skeleton Horse"), "mobs_mc_spawn_icon_horse_skeleton.png", 0)
-mobs:register_egg("mobs_mc:zombie_horse", S("Zombie Horse"), "mobs_mc_spawn_icon_horse_zombie.png", 0)
+--mobs:register_egg("mobs_mc:zombie_horse", S("Zombie Horse"), "mobs_mc_spawn_icon_horse_zombie.png", 0)
 mobs:register_egg("mobs_mc:donkey", S("Donkey"), "mobs_mc_spawn_icon_donkey.png", 0)
 mobs:register_egg("mobs_mc:mule", S("Mule"), "mobs_mc_spawn_icon_mule.png", 0)

@@ -1,14 +1,15 @@
 -- Glass nodes
-local S = minetest.get_translator("mcl_core")
+local S = minetest.get_translator(minetest.get_current_modname())
 local mod_doc = minetest.get_modpath("doc")
 
 minetest.register_node("mcl_core:glass", {
 	description = S("Glass"),
 	_doc_items_longdesc = S("A decorative and mostly transparent block."),
-	drawtype = "glasslike",
+	drawtype = "glasslike_framed_optional",
 	is_ground_content = false,
-	tiles = {"default_glass.png"},
+	tiles = {"default_glass.png", "default_glass_detail.png"},
 	paramtype = "light",
+	paramtype2 = "glasslikeliquidlevel",
 	sunlight_propagates = true,
 	stack_max = 64,
 	groups = {handy=1, glass=1, building_block=1, material_glass=1},
@@ -20,7 +21,7 @@ minetest.register_node("mcl_core:glass", {
 })
 
 ------------------------
--- Create Color Glass -- 
+-- Create Color Glass --
 ------------------------
 local canonical_color = "yellow"
 function mcl_core.add_stained_glass(desc, recipeitem, colorgroup, color)
@@ -39,10 +40,11 @@ function mcl_core.add_stained_glass(desc, recipeitem, colorgroup, color)
 		_doc_items_create_entry = create_entry,
 		_doc_items_entry_name = entry_name,
 		_doc_items_longdesc = longdesc,
-		drawtype = "glasslike",
+		drawtype = "glasslike_framed_optional",
 		is_ground_content = false,
-		tiles = {"mcl_core_glass_"..color..".png"},
+		tiles = {"mcl_core_glass_"..color..".png", "mcl_core_glass_"..color.."_detail.png"},
 		paramtype = "light",
+		paramtype2 = "glasslikeliquidlevel",
 		sunlight_propagates = true,
 		use_texture_alpha = minetest.features.use_texture_alpha_string_modes and "blend" or true,
 		stack_max = 64,
@@ -54,13 +56,13 @@ function mcl_core.add_stained_glass(desc, recipeitem, colorgroup, color)
 		_mcl_hardness = 0.3,
 		_mcl_silk_touch_drop = true,
 	})
-	
+
 	minetest.register_craft({
-		output = 'mcl_core:glass_'..color..' 8',
+		output = "mcl_core:glass_"..color.." 8",
 		recipe = {
-			{'mcl_core:glass','mcl_core:glass','mcl_core:glass'},
-			{'mcl_core:glass',recipeitem,'mcl_core:glass'},
-			{'mcl_core:glass','mcl_core:glass','mcl_core:glass'},
+			{"mcl_core:glass","mcl_core:glass","mcl_core:glass"},
+			{"mcl_core:glass",recipeitem,"mcl_core:glass"},
+			{"mcl_core:glass","mcl_core:glass","mcl_core:glass"},
 		}
 	})
 

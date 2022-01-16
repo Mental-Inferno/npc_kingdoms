@@ -1,4 +1,6 @@
-local S = minetest.get_translator("mcl_tools")
+local modname = minetest.get_current_modname()
+local modpath = minetest.get_modpath(modname)
+local S = minetest.get_translator(modname)
 
 -- mods/default/tools.lua
 
@@ -6,14 +8,7 @@ local S = minetest.get_translator("mcl_tools")
 -- Tool definition
 --
 
---[[ Maximum drop level definitions:
-- 0: Hand
-- 1: Wood / Shears
-- 2: Gold
-- 3: Stone
-- 4: Iron
-- 5: Diamond
-
+--[[
 dig_speed_class group:
 - 1: Painfully slow
 - 2: Very slow
@@ -26,25 +21,18 @@ dig_speed_class group:
 
 -- The hand
 local groupcaps, hand_range, hand_groups
+
 if minetest.is_creative_enabled("") then
 	-- Instant breaking in creative mode
-	groupcaps = {
-		creative_breakable = {times={[1]=0}, uses=0},
-	}
-	-- mcl_autogroup provides the creative digging times for all digging groups
-	for k,v in pairs(mcl_autogroup.creativetimes) do
-		groupcaps[k] = { times = v, uses = 0 }
-	end
+	groupcaps = { creative_breakable = { times = {0}, uses = 0 } }
 	hand_range = 10
 	hand_groups = { dig_speed_class = 7 }
 else
-	groupcaps = {
-		handy_dig = {times=mcl_autogroup.digtimes.handy_dig, uses=0},
-	}
+	groupcaps = {}
 	hand_range = 4
 	hand_groups = { dig_speed_class = 1 }
 end
-minetest.register_item(":", {
+minetest.register_tool(":", {
 	type = "none",
 	_doc_items_longdesc = S("You use your bare hand whenever you are not wielding any item. With your hand you can mine most blocks, but this is the slowest method and only the weakest blocks will yield their useful drop. The hand also deals minor damage by punching. Using the hand is often a last resort, as proper mining tools and weapons are much better.").."\n"..
 			S("When you are wielding an item which is not a mining tool or a weapon, it will behave as if it were the hand when you start mining or punching.").."\n"..
@@ -61,6 +49,18 @@ minetest.register_item(":", {
 		damage_groups = {fleshy=1},
 	},
 	groups = hand_groups,
+	_mcl_diggroups = {
+		handy = { speed = 1, level = 1, uses = 0 },
+		axey = { speed = 1, level = 1, uses = 0 },
+		shovely = { speed = 1, level = 1, uses = 0 },
+		hoey = { speed = 1, level = 1, uses = 0 },
+		pickaxey = { speed = 1, level = 0, uses = 0 },
+		swordy = { speed = 1, level = 0, uses = 0 },
+		swordy_cobweb = { speed = 1, level = 0, uses = 0 },
+		shearsy = { speed = 1, level = 0, uses = 0 },
+		shearsy_wool = { speed = 1, level = 0, uses = 0 },
+		shearsy_cobweb = { speed = 1, level = 0, uses = 0 },
+	}
 })
 
 -- Help texts
@@ -72,7 +72,7 @@ local shovel_use = S("To turn a grass block into a grass path, hold the shovel i
 local shears_longdesc = S("Shears are tools to shear sheep and to mine a few block types. Shears are a special mining tool and can be used to obtain the original item from grass, leaves and similar blocks that require cutting.")
 local shears_use = S("To shear sheep or carve faceless pumpkins, use the “place” key on them. Faces can only be carved at the side of faceless pumpkins. Mining works as usual, but the drops are different for a few blocks.")
 
-local wield_scale = { x = 1.8, y = 1.8, z = 1 }
+local wield_scale = mcl_vars.tool_wield_scale
 
 -- Picks
 minetest.register_tool("mcl_tools:pick_wood", {
@@ -86,15 +86,15 @@ minetest.register_tool("mcl_tools:pick_wood", {
 		-- 1/1.2
 		full_punch_interval = 0.83333333,
 		max_drop_level=1,
-		groupcaps={
-			pickaxey_dig_wood = {times=mcl_autogroup.digtimes.pickaxey_dig_wood, uses=60, maxlevel=0},
-		},
 		damage_groups = {fleshy=2},
 		punch_attack_uses = 30,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "group:wood",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		pickaxey = { speed = 2, level = 1, uses = 60 }
+	},
 })
 minetest.register_tool("mcl_tools:pick_stone", {
 	description = S("Stone Pickaxe"),
@@ -106,15 +106,15 @@ minetest.register_tool("mcl_tools:pick_stone", {
 		-- 1/1.2
 		full_punch_interval = 0.83333333,
 		max_drop_level=3,
-		groupcaps={
-			pickaxey_dig_stone = {times=mcl_autogroup.digtimes.pickaxey_dig_stone, uses=132, maxlevel=0},
-		},
 		damage_groups = {fleshy=3},
 		punch_attack_uses = 66,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:cobble",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		pickaxey = { speed = 4, level = 3, uses = 132 }
+	},
 })
 minetest.register_tool("mcl_tools:pick_iron", {
 	description = S("Iron Pickaxe"),
@@ -126,15 +126,15 @@ minetest.register_tool("mcl_tools:pick_iron", {
 		-- 1/1.2
 		full_punch_interval = 0.83333333,
 		max_drop_level=4,
-		groupcaps={
-			pickaxey_dig_iron = {times=mcl_autogroup.digtimes.pickaxey_dig_iron , uses=251, maxlevel=0},
-		},
 		damage_groups = {fleshy=4},
 		punch_attack_uses = 126,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:iron_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		pickaxey = { speed = 6, level = 4, uses = 251 }
+	},
 })
 minetest.register_tool("mcl_tools:pick_gold", {
 	description = S("Golden Pickaxe"),
@@ -146,15 +146,15 @@ minetest.register_tool("mcl_tools:pick_gold", {
 		-- 1/1.2
 		full_punch_interval = 0.83333333,
 		max_drop_level=2,
-		groupcaps={
-			pickaxey_dig_gold = {times=mcl_autogroup.digtimes.pickaxey_dig_gold , uses=33, maxlevel=0},
-		},
 		damage_groups = {fleshy=2},
 		punch_attack_uses = 17,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:gold_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		pickaxey = { speed = 12, level = 2, uses = 33 }
+	},
 })
 minetest.register_tool("mcl_tools:pick_diamond", {
 	description = S("Diamond Pickaxe"),
@@ -166,38 +166,41 @@ minetest.register_tool("mcl_tools:pick_diamond", {
 		-- 1/1.2
 		full_punch_interval = 0.83333333,
 		max_drop_level=5,
-		groupcaps={
-			pickaxey_dig_diamond = {times=mcl_autogroup.digtimes.pickaxey_dig_diamond, uses=1562, maxlevel=0},
-		},
 		damage_groups = {fleshy=5},
 		punch_attack_uses = 781,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:diamond",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		pickaxey = { speed = 8, level = 5, uses = 1562 }
+	},
+	_mcl_upgradable = true,
+	_mcl_upgrade_item = "mcl_tools:pick_netherite"
 })
 
-local get_shovel_dig_group = function(itemstack)
-	local itemstring = itemstack:get_name()
-	local efficiency_level = mcl_enchanting.get_enchantment(itemstack, "efficiency")
-	local postfix = efficiency_level > 0 and "_efficiency_" .. efficiency_level or ""
-	if itemstring:find("mcl_tools:shovel_wood") == 1 then
-		return "shovely_dig_wood" .. postfix
-	elseif itemstring:find("mcl_tools:shovel_stone") == 1 then
-		return "shovely_dig_stone" .. postfix
-	elseif itemstring:find("mcl_tools:shovel_iron") == 1 then
-		return "shovely_dig_iron" .. postfix
-	elseif itemstring:find("mcl_tools:shovel_gold") == 1 then
-		return "shovely_dig_gold" .. postfix
-	elseif itemstring:find("mcl_tools:shovel_diamond") == 1 then
-		return "shovely_dig_diamond" .. postfix
-	else
-		-- Fallback
-		return "shovely_dig_wood"
-	end
-end
+minetest.register_tool("mcl_tools:pick_netherite", {
+	description = S("Netherite Pickaxe"),
+	_doc_items_longdesc = pickaxe_longdesc,
+	inventory_image = "default_tool_netheritepick.png",
+	wield_scale = wield_scale,
+	groups = { tool=1, pickaxe=1, dig_speed_class=6, enchantability=10 },
+	tool_capabilities = {
+		-- 1/1.2
+		full_punch_interval = 0.83333333,
+		max_drop_level=5,
+		damage_groups = {fleshy=6},
+		punch_attack_uses = 1016,
+	},
+	sound = { breaks = "default_tool_breaks" },
+	_repair_material = "mcl_nether:netherite_ingot",
+	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		pickaxey = { speed = 9.5, level = 6, uses = 2031 }
+	},
+})
 
-local make_grass_path = function(itemstack, placer, pointed_thing)
+local function make_grass_path(itemstack, placer, pointed_thing)
 	-- Use pointed node's on_rightclick function first, if present
 	local node = minetest.get_node(pointed_thing.under)
 	if placer and not placer:get_player_control().sneak then
@@ -221,15 +224,9 @@ local make_grass_path = function(itemstack, placer, pointed_thing)
 			end
 
 			if not minetest.is_creative_enabled(placer:get_player_name()) then
-				-- Add wear, as if digging a level 0 shovely node
+				-- Add wear (as if digging a shovely node)
 				local toolname = itemstack:get_name()
-				local def = minetest.registered_items[toolname]
-				local group = get_shovel_dig_group(itemstack)
-				local toolcaps = itemstack:get_tool_capabilities()
-				local base_uses = toolcaps.groupcaps[group].uses
-				local maxlevel = toolcaps.groupcaps[group].maxlevel
-				local uses = base_uses * math.pow(3, maxlevel)
-				local wear = math.ceil(65535 / uses)
+				local wear = mcl_autogroup.get_wear(toolname, "shovely")
 				itemstack:add_wear(wear)
 			end
 			minetest.sound_play({name="default_grass_footstep", gain=1}, {pos = above}, true)
@@ -241,7 +238,7 @@ end
 
 local carve_pumpkin
 if minetest.get_modpath("mcl_farming") then
-	carve_pumpkin = function(itemstack, placer, pointed_thing)
+	function carve_pumpkin(itemstack, placer, pointed_thing)
 		-- Use pointed node's on_rightclick function first, if present
 		local node = minetest.get_node(pointed_thing.under)
 		if placer and not placer:get_player_control().sneak then
@@ -258,15 +255,10 @@ if minetest.get_modpath("mcl_farming") then
 			if not minetest.is_creative_enabled(placer:get_player_name()) then
 				-- Add wear (as if digging a shearsy node)
 				local toolname = itemstack:get_name()
-				local def = minetest.registered_items[toolname]
-				local group = get_shovel_dig_group(toolname)
-				local base_uses = def.tool_capabilities.groupcaps["shearsy_dig"].uses
-				local maxlevel = def.tool_capabilities.groupcaps["shearsy_dig"].maxlevel
-				local uses = base_uses * math.pow(3, maxlevel)
-				local wear = math.ceil(65535 / uses)
+				local wear = mcl_autogroup.get_wear(toolname, "shearsy")
 				itemstack:add_wear(wear)
 			end
-			minetest.sound_play({name="default_grass_footstep", gain=1}, {pos = above}, true)
+			minetest.sound_play({name="default_grass_footstep", gain=1}, {pos = pointed_thing.above}, true)
 			local dir = vector.subtract(pointed_thing.under, pointed_thing.above)
 			local param2 = minetest.dir_to_facedir(dir)
 			minetest.swap_node(pointed_thing.under, {name="mcl_farming:pumpkin_face", param2 = param2})
@@ -288,9 +280,6 @@ minetest.register_tool("mcl_tools:shovel_wood", {
 	tool_capabilities = {
 		full_punch_interval = 1,
 		max_drop_level=1,
-		groupcaps={
-			shovely_dig_wood = {times=mcl_autogroup.digtimes.shovely_dig_wood, uses=60, maxlevel=0},
-		},
 		damage_groups = {fleshy=2},
 		punch_attack_uses = 30,
 	},
@@ -298,6 +287,9 @@ minetest.register_tool("mcl_tools:shovel_wood", {
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "group:wood",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shovely = { speed = 2, level = 1, uses = 60 }
+	},
 })
 minetest.register_tool("mcl_tools:shovel_stone", {
 	description = S("Stone Shovel"),
@@ -309,9 +301,6 @@ minetest.register_tool("mcl_tools:shovel_stone", {
 	tool_capabilities = {
 		full_punch_interval = 1,
 		max_drop_level=3,
-		groupcaps={
-			shovely_dig_stone = {times=mcl_autogroup.digtimes.shovely_dig_stone, uses=132, maxlevel=0},
-		},
 		damage_groups = {fleshy=3},
 		punch_attack_uses = 66,
 	},
@@ -319,6 +308,9 @@ minetest.register_tool("mcl_tools:shovel_stone", {
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:cobble",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shovely = { speed = 4, level = 3, uses = 132 }
+	},
 })
 minetest.register_tool("mcl_tools:shovel_iron", {
 	description = S("Iron Shovel"),
@@ -330,9 +322,6 @@ minetest.register_tool("mcl_tools:shovel_iron", {
 	tool_capabilities = {
 		full_punch_interval = 1,
 		max_drop_level=4,
-		groupcaps={
-			shovely_dig_iron = {times=mcl_autogroup.digtimes.shovely_dig_iron, uses=251, maxlevel=0},
-		},
 		damage_groups = {fleshy=4},
 		punch_attack_uses = 126,
 	},
@@ -340,6 +329,9 @@ minetest.register_tool("mcl_tools:shovel_iron", {
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:iron_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shovely = { speed = 6, level = 4, uses = 251 }
+	},
 })
 minetest.register_tool("mcl_tools:shovel_gold", {
 	description = S("Golden Shovel"),
@@ -351,9 +343,6 @@ minetest.register_tool("mcl_tools:shovel_gold", {
 	tool_capabilities = {
 		full_punch_interval = 1,
 		max_drop_level=2,
-		groupcaps={
-			shovely_dig_gold = {times=mcl_autogroup.digtimes.shovely_dig_gold, uses=33, maxlevel=0},
-		},
 		damage_groups = {fleshy=2},
 		punch_attack_uses = 17,
 	},
@@ -361,6 +350,9 @@ minetest.register_tool("mcl_tools:shovel_gold", {
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:gold_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shovely = { speed = 12, level = 2, uses = 33 }
+	},
 })
 minetest.register_tool("mcl_tools:shovel_diamond", {
 	description = S("Diamond Shovel"),
@@ -372,9 +364,6 @@ minetest.register_tool("mcl_tools:shovel_diamond", {
 	tool_capabilities = {
 		full_punch_interval = 1,
 		max_drop_level=5,
-		groupcaps={
-			shovely_dig_diamond = {times=mcl_autogroup.digtimes.shovely_dig_diamond, uses=1562, maxlevel=0},
-		},
 		damage_groups = {fleshy=5},
 		punch_attack_uses = 781,
 	},
@@ -382,9 +371,64 @@ minetest.register_tool("mcl_tools:shovel_diamond", {
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:diamond",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shovely = { speed = 8, level = 5, uses = 1562 }
+	},
+	_mcl_upgradable = true,
+	_mcl_upgrade_item = "mcl_tools:shovel_netherite"
+})
+
+minetest.register_tool("mcl_tools:shovel_netherite", {
+	description = S("Netherite Shovel"),
+	_doc_items_longdesc = shovel_longdesc,
+	_doc_items_usagehelp = shovel_use,
+	inventory_image = "default_tool_netheriteshovel.png",
+	wield_scale = wield_scale,
+	groups = { tool=1, shovel=1, dig_speed_class=6, enchantability=10 },
+	tool_capabilities = {
+		full_punch_interval = 1,
+		max_drop_level=5,
+		damage_groups = {fleshy=5},
+		punch_attack_uses = 1016,
+	},
+	on_place = make_grass_path,
+	sound = { breaks = "default_tool_breaks" },
+	_repair_material = "mcl_nether:netherite_ingot",
+	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shovely = { speed = 9, level = 6, uses = 2031 }
+	},
 })
 
 -- Axes
+local function make_stripped_trunk(itemstack, placer, pointed_thing)
+    if pointed_thing.type ~= "node" then return end
+
+    local node = minetest.get_node(pointed_thing.under)
+    local noddef = minetest.registered_nodes[minetest.get_node(pointed_thing.under).name]
+
+    if not placer:get_player_control().sneak and noddef.on_rightclick then
+        return minetest.item_place(itemstack, placer, pointed_thing)
+    end
+    if minetest.is_protected(pointed_thing.under, placer:get_player_name()) then
+        minetest.record_protection_violation(pointed_thing.under, placer:get_player_name())
+        return itemstack
+    end
+
+    if noddef._mcl_stripped_variant == nil then
+		return itemstack
+	else
+		minetest.swap_node(pointed_thing.under, {name=noddef._mcl_stripped_variant, param2=node.param2})
+		if not minetest.is_creative_enabled(placer:get_player_name()) then
+			-- Add wear (as if digging a axey node)
+			local toolname = itemstack:get_name()
+			local wear = mcl_autogroup.get_wear(toolname, "axey")
+			itemstack:add_wear(wear)
+		end
+	end
+    return itemstack
+end
+
 minetest.register_tool("mcl_tools:axe_wood", {
 	description = S("Wooden Axe"),
 	_doc_items_longdesc = axe_longdesc,
@@ -395,15 +439,16 @@ minetest.register_tool("mcl_tools:axe_wood", {
 	tool_capabilities = {
 		full_punch_interval = 1.25,
 		max_drop_level=1,
-		groupcaps={
-			axey_dig_wood = {times=mcl_autogroup.digtimes.axey_dig_wood, uses=60, maxlevel=0},
-		},
 		damage_groups = {fleshy=7},
 		punch_attack_uses = 30,
 	},
+	on_place = make_stripped_trunk,
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "group:wood",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		axey = { speed = 2, level = 1, uses = 60 }
+	},
 })
 minetest.register_tool("mcl_tools:axe_stone", {
 	description = S("Stone Axe"),
@@ -414,15 +459,16 @@ minetest.register_tool("mcl_tools:axe_stone", {
 	tool_capabilities = {
 		full_punch_interval = 1.25,
 		max_drop_level=3,
-		groupcaps={
-			axey_dig_stone = {times=mcl_autogroup.digtimes.axey_dig_stone, uses=132, maxlevel=0},
-		},
 		damage_groups = {fleshy=9},
 		punch_attack_uses = 66,
 	},
+	on_place = make_stripped_trunk,
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:cobble",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		axey = { speed = 4, level = 3, uses = 132 }
+	},
 })
 minetest.register_tool("mcl_tools:axe_iron", {
 	description = S("Iron Axe"),
@@ -434,15 +480,16 @@ minetest.register_tool("mcl_tools:axe_iron", {
 		-- 1/0.9
 		full_punch_interval = 1.11111111,
 		max_drop_level=4,
-		groupcaps={
-			axey_dig_iron = {times=mcl_autogroup.digtimes.axey_dig_iron, uses=251, maxlevel=0},
-		},
 		damage_groups = {fleshy=9},
 		punch_attack_uses = 126,
 	},
+	on_place = make_stripped_trunk,
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:iron_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		axey = { speed = 6, level = 4, uses = 251 }
+	},
 })
 minetest.register_tool("mcl_tools:axe_gold", {
 	description = S("Golden Axe"),
@@ -453,15 +500,16 @@ minetest.register_tool("mcl_tools:axe_gold", {
 	tool_capabilities = {
 		full_punch_interval = 1.0,
 		max_drop_level=2,
-		groupcaps={
-			axey_dig_gold= {times=mcl_autogroup.digtimes.axey_dig_gold, uses=33, maxlevel=0},
-		},
 		damage_groups = {fleshy=7},
 		punch_attack_uses = 17,
 	},
+	on_place = make_stripped_trunk,
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:gold_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		axey = { speed = 12, level = 2, uses = 33 }
+	},
 })
 minetest.register_tool("mcl_tools:axe_diamond", {
 	description = S("Diamond Axe"),
@@ -472,15 +520,39 @@ minetest.register_tool("mcl_tools:axe_diamond", {
 	tool_capabilities = {
 		full_punch_interval = 1.0,
 		max_drop_level=5,
-		groupcaps={
-			axey_dig_diamond = {times=mcl_autogroup.digtimes.axey_dig_diamond, uses=1562, maxlevel=0},
-		},
 		damage_groups = {fleshy=9},
 		punch_attack_uses = 781,
 	},
+	on_place = make_stripped_trunk,
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:diamond",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		axey = { speed = 8, level = 5, uses = 1562 }
+	},
+	_mcl_upgradable = true,
+	_mcl_upgrade_item = "mcl_tools:axe_netherite"
+})
+
+minetest.register_tool("mcl_tools:axe_netherite", {
+	description = S("Netherite Axe"),
+	_doc_items_longdesc = axe_longdesc,
+	inventory_image = "default_tool_netheriteaxe.png",
+	wield_scale = wield_scale,
+	groups = { tool=1, axe=1, dig_speed_class=6, enchantability=10 },
+	tool_capabilities = {
+		full_punch_interval = 1.0,
+		max_drop_level=5,
+		damage_groups = {fleshy=10},
+		punch_attack_uses = 1016,
+	},
+	on_place = make_stripped_trunk,
+	sound = { breaks = "default_tool_breaks" },
+	_repair_material = "mcl_nether:netherite_ingot",
+	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		axey = { speed = 9, level = 6, uses = 2031 }
+	},
 })
 
 -- Swords
@@ -494,16 +566,16 @@ minetest.register_tool("mcl_tools:sword_wood", {
 	tool_capabilities = {
 		full_punch_interval = 0.625,
 		max_drop_level=1,
-		groupcaps={
-			swordy_dig = {times=mcl_autogroup.digtimes.swordy_dig , uses=60, maxlevel=0},
-			swordy_cobweb_dig = {times=mcl_autogroup.digtimes.swordy_cobweb_dig , uses=60, maxlevel=0},
-		},
 		damage_groups = {fleshy=4},
 		punch_attack_uses = 60,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "group:wood",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		swordy = { speed = 2, level = 1, uses = 60 },
+		swordy_cobweb = { speed = 2, level = 1, uses = 60 }
+	},
 })
 minetest.register_tool("mcl_tools:sword_stone", {
 	description = S("Stone Sword"),
@@ -514,16 +586,16 @@ minetest.register_tool("mcl_tools:sword_stone", {
 	tool_capabilities = {
 		full_punch_interval = 0.625,
 		max_drop_level=3,
-		groupcaps={
-			swordy_dig = {times=mcl_autogroup.digtimes.swordy_dig , uses=132, maxlevel=0},
-			swordy_cobweb_dig = {times=mcl_autogroup.digtimes.swordy_cobweb_dig , uses=132, maxlevel=0},
-		},
 		damage_groups = {fleshy=5},
 		punch_attack_uses = 132,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:cobble",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		swordy = { speed = 4, level = 3, uses = 132 },
+		swordy_cobweb = { speed = 4, level = 3, uses = 132 }
+	},
 })
 minetest.register_tool("mcl_tools:sword_iron", {
 	description = S("Iron Sword"),
@@ -534,16 +606,16 @@ minetest.register_tool("mcl_tools:sword_iron", {
 	tool_capabilities = {
 		full_punch_interval = 0.625,
 		max_drop_level=4,
-		groupcaps={
-			swordy_dig = {times=mcl_autogroup.digtimes.swordy_dig, uses=251, maxlevel=0},
-			swordy_cobweb_dig = {times=mcl_autogroup.digtimes.swordy_cobweb_dig , uses=251, maxlevel=0},
-		},
 		damage_groups = {fleshy=6},
 		punch_attack_uses = 251,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:iron_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		swordy = { speed = 6, level = 4, uses = 251 },
+		swordy_cobweb = { speed = 6, level = 4, uses = 251 }
+	},
 })
 minetest.register_tool("mcl_tools:sword_gold", {
 	description = S("Golden Sword"),
@@ -554,16 +626,16 @@ minetest.register_tool("mcl_tools:sword_gold", {
 	tool_capabilities = {
 		full_punch_interval = 0.625,
 		max_drop_level=2,
-		groupcaps={
-			swordy_dig = {times=mcl_autogroup.digtimes.swordy_dig, uses=33, maxlevel=0},
-			swordy_cobweb_dig = {times=mcl_autogroup.digtimes.swordy_cobweb_dig, uses=33, maxlevel=0},
-		},
 		damage_groups = {fleshy=4},
 		punch_attack_uses = 33,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:gold_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		swordy = { speed = 12, level = 2, uses = 33 },
+		swordy_cobweb = { speed = 12, level = 2, uses = 33 }
+	},
 })
 minetest.register_tool("mcl_tools:sword_diamond", {
 	description = S("Diamond Sword"),
@@ -574,16 +646,38 @@ minetest.register_tool("mcl_tools:sword_diamond", {
 	tool_capabilities = {
 		full_punch_interval = 0.625,
 		max_drop_level=5,
-		groupcaps={
-			swordy_dig = {times=mcl_autogroup.digtimes.swordy_dig, uses=1562, maxlevel=0},
-			swordy_cobweb_dig = {times=mcl_autogroup.digtimes.swordy_cobweb_dig, uses=1562, maxlevel=0},
-		},
 		damage_groups = {fleshy=7},
 		punch_attack_uses = 1562,
 	},
 	sound = { breaks = "default_tool_breaks" },
 	_repair_material = "mcl_core:diamond",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		swordy = { speed = 8, level = 5, uses = 1562 },
+		swordy_cobweb = { speed = 8, level = 5, uses = 1562 }
+	},
+	_mcl_upgradable = true,
+	_mcl_upgrade_item = "mcl_tools:sword_netherite"
+})
+minetest.register_tool("mcl_tools:sword_netherite", {
+	description = S("Netherite Sword"),
+	_doc_items_longdesc = sword_longdesc,
+	inventory_image = "default_tool_netheritesword.png",
+	wield_scale = wield_scale,
+	groups = { weapon=1, sword=1, dig_speed_class=5, enchantability=10 },
+	tool_capabilities = {
+		full_punch_interval = 0.625,
+		max_drop_level=5,
+		damage_groups = {fleshy=9},
+		punch_attack_uses = 2031,
+	},
+	sound = { breaks = "default_tool_breaks" },
+	_repair_material = "mcl_nether:netherite_ingot",
+	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		swordy = { speed = 8, level = 5, uses = 2031 },
+		swordy_cobweb = { speed = 8, level = 5, uses = 2031 }
+	},
 })
 
 --Shears
@@ -598,16 +692,17 @@ minetest.register_tool("mcl_tools:shears", {
 	tool_capabilities = {
 	        full_punch_interval = 0.5,
 	        max_drop_level=1,
-	        groupcaps={
-			shearsy_dig = {times=mcl_autogroup.digtimes.shearsy_dig, uses=238, maxlevel=0},
-			shearsy_wool_dig = {times=mcl_autogroup.digtimes.shearsy_wool_dig, uses=238, maxlevel=0},
-		}
 	},
 	on_place = carve_pumpkin,
 	sound = { breaks = "default_tool_breaks" },
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		shearsy = { speed = 1.5, level = 1, uses = 238 },
+		shearsy_wool = { speed = 5, level = 1, uses = 238 },
+		shearsy_cobweb = { speed = 15, level = 1, uses = 238 }
+	},
 })
 
 
-dofile(minetest.get_modpath("mcl_tools").."/crafting.lua")
-dofile(minetest.get_modpath("mcl_tools").."/aliases.lua")
+dofile(modpath.."/crafting.lua")
+dofile(modpath.."/aliases.lua")

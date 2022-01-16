@@ -1,12 +1,16 @@
 --License for code WTFPL and otherwise stated in readmes
 
-local S = minetest.get_translator("mobs_mc")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 mobs:register_mob("mobs_mc:bat", {
+	description = S("Bat"),
 	type = "animal",
 	spawn_class = "ambient",
 	can_despawn = true,
 	passive = true,
+	rotate = 270,
+	tilt_fly = true,
+	fly = true,
 	hp_min = 6,
 	hp_max = 6,
 	collisionbox = {-0.25, -0.01, -0.25, 0.25, 0.89, 0.25},
@@ -44,9 +48,7 @@ mobs:register_mob("mobs_mc:bat", {
 	fall_damage = 0,
 	view_range = 16,
 	fear_height = 0,
-
 	jump = false,
-	fly = true,
 	makes_footstep_sound = false,
 })
 
@@ -64,7 +66,81 @@ else
 end
 
 -- Spawn on solid blocks at or below Sea level and the selected light level
-mobs:spawn_specific("mobs_mc:bat", mobs_mc.spawn.solid, {"air"}, 0, maxlight, 20, 5000, 2, mobs_mc.spawn_height.overworld_min, mobs_mc.spawn_height.water-1)
+mobs:spawn_specific(
+"mobs_mc:bat",
+"overworld",
+"ground",
+{
+"FlowerForest_underground",
+"JungleEdge_underground",
+"StoneBeach_underground",
+"MesaBryce_underground",
+"Mesa_underground",
+"RoofedForest_underground",
+"Jungle_underground",
+"Swampland_underground",
+"MushroomIsland_underground",
+"BirchForest_underground",
+"Plains_underground",
+"MesaPlateauF_underground",
+"ExtremeHills_underground",
+"MegaSpruceTaiga_underground",
+"BirchForestM_underground",
+"SavannaM_underground",
+"MesaPlateauFM_underground",
+"Desert_underground",
+"Savanna_underground",
+"Forest_underground",
+"SunflowerPlains_underground",
+"ColdTaiga_underground",
+"IcePlains_underground",
+"IcePlainsSpikes_underground",
+"MegaTaiga_underground",
+"Taiga_underground",
+"ExtremeHills+_underground",
+"JungleM_underground",
+"ExtremeHillsM_underground",
+"JungleEdgeM_underground",
+"Mesa",
+"FlowerForest",
+"Swampland",
+"Taiga",
+"ExtremeHills",
+"Jungle",
+"Savanna",
+"BirchForest",
+"MegaSpruceTaiga",
+"MegaTaiga",
+"ExtremeHills+",
+"Forest",
+"Plains",
+"Desert",
+"ColdTaiga",
+"MushroomIsland",
+"IcePlainsSpikes",
+"SunflowerPlains",
+"IcePlains",
+"RoofedForest",
+"ExtremeHills+_snowtop",
+"MesaPlateauFM_grasstop",
+"JungleEdgeM",
+"ExtremeHillsM",
+"JungleM",
+"BirchForestM",
+"MesaPlateauF",
+"MesaPlateauFM",
+"MesaPlateauF_grasstop",
+"MesaBryce",
+"JungleEdge",
+"SavannaM",
+},
+0,
+maxlight,
+20,
+5000,
+2,
+mobs_mc.spawn_height.overworld_min,
+mobs_mc.spawn_height.water-1)
 
 
 -- spawn eggs

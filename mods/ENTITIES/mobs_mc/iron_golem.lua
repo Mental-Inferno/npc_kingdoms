@@ -3,7 +3,7 @@
 --made for MC like Survival game
 --License for code WTFPL and otherwise stated in readmes
 
-local S = minetest.get_translator("mobs_mc")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 --###################
 --################### IRON GOLEM
@@ -12,11 +12,17 @@ local S = minetest.get_translator("mobs_mc")
 
 
 mobs:register_mob("mobs_mc:iron_golem", {
+	description = S("Iron Golem"),
 	type = "npc",
 	spawn_class = "passive",
 	passive = true,
+	rotate = 270,
 	hp_min = 100,
 	hp_max = 100,
+	xp_min = 0,
+	xp_max = 0,
+	protect = true,
+	neutral = true,
 	breath_max = -1,
 	collisionbox = {-0.7, -0.01, -0.7, 0.7, 2.69, 0.7},
 	visual = "mesh",
@@ -39,7 +45,7 @@ mobs:register_mob("mobs_mc:iron_golem", {
 	reach = 3,
 	group_attack = true,
 	attacks_monsters = true,
-	attack_type = "dogfight",
+	attack_type = "punch",
 	drops = {
 		{name = mobs_mc.items.iron_ingot,
 		chance = 1,
@@ -154,11 +160,11 @@ mobs_mc.tools.check_iron_golem_summon = function(pos)
 		if ok then
 			-- Remove the nodes
 			minetest.remove_node(pos)
-			core.check_for_falling(pos)
+			minetest.check_for_falling(pos)
 			for i=1, 4 do
 				local cpos = vector.add(pos, checks[c][i])
 				minetest.remove_node(cpos)
-				core.check_for_falling(cpos)
+				minetest.check_for_falling(cpos)
 			end
 			-- Summon iron golem
 			local place

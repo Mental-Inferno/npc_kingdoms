@@ -3,12 +3,12 @@
 --made for MC like Survival game
 --License for code WTFPL and otherwise stated in readmes
 
-local S = minetest.get_translator("mobs_mc")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 local snow_trail_frequency = 0.5 -- Time in seconds for checking to add a new snow trail
 
 local mobs_griefing = minetest.settings:get_bool("mobs_griefing") ~= false
-local mod_throwing = minetest.get_modpath("mcl_throwing") ~= nil
+local mod_throwing = minetest.get_modpath("mcl_throwing")
 
 local gotten_texture = {
 	"mobs_mc_snowman.png",
@@ -21,11 +21,14 @@ local gotten_texture = {
 }
 
 mobs:register_mob("mobs_mc:snowman", {
+	description = S("Snow Golem"),
 	type = "npc",
 	spawn_class = "passive",
 	passive = true,
 	hp_min = 4,
 	hp_max = 4,
+	xp_min = 0,
+	xp_max = 0,
 	pathfinding = 1,
 	view_range = 10,
 	fall_damage = 0,
@@ -178,9 +181,9 @@ mobs_mc.tools.check_snow_golem_summon = function(pos)
 			minetest.remove_node(pos)
 			minetest.remove_node(b1)
 			minetest.remove_node(b2)
-			core.check_for_falling(pos)
-			core.check_for_falling(b1)
-			core.check_for_falling(b2)
+			minetest.check_for_falling(pos)
+			minetest.check_for_falling(b1)
+			minetest.check_for_falling(b2)
 			local obj = minetest.add_entity(place, "mobs_mc:snowman")
 			if obj then
 				summon_particles(obj)

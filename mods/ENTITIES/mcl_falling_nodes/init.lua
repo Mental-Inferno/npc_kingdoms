@@ -1,7 +1,4 @@
-local S = minetest.get_translator("mcl_falling_nodes")
-local dmes = minetest.get_modpath("mcl_death_messages") ~= nil
-
-local get_falling_depth = function(self)
+local function get_falling_depth(self)
 	if not self._startpos then
 		-- Fallback
 		self._startpos = self.object:get_pos()
@@ -9,56 +6,45 @@ local get_falling_depth = function(self)
 	return self._startpos.y - vector.round(self.object:get_pos()).y
 end
 
-local deal_falling_damage = function(self, dtime)
+local function deal_falling_damage(self, dtime)
 	if minetest.get_item_group(self.node.name, "falling_node_damage") == 0 then
 		return
 	end
-	-- Cause damage to any player it hits.
+	-- Cause damage to any entity it hits.
 	-- Algorithm based on MC anvils.
-	-- TODO: Support smashing other objects, too.
 	local pos = self.object:get_pos()
 	if not self._startpos then
 		-- Fallback
 		self._startpos = pos
 	end
-	local objs = minetest.get_objects_inside_radius(pos, 1)
-	for _,v in ipairs(objs) do
-		local hp = v:get_hp()
-		if v:is_player() and hp ~= 0 then
-			if not self._hit_players then
-				self._hit_players = {}
-			end
-			local name = v:get_player_name()
-			local hit = false
-			for _,v in ipairs(self._hit_players) do
-				if name == v then
-					hit = true
-				end
-			end
-			if not hit then
-				table.insert(self._hit_players, name)
-				local way = self._startpos.y - pos.y
-				local damage = (way - 1) * 2
-				damage = math.min(40, math.max(0, damage))
-				if damage >= 1 then
-					hp = hp - damage
-					if hp < 0 then
-						hp = 0
+	self._hit = self._hit or {}
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1)) do
+		local entity = obj:get_luaentity()
+		if entity and entity.name == "__builtin:item" then
+			obj:remove()
+		elseif mcl_util.get_hp(obj) > 0 and not self._hit[obj] then
+			self._hit[obj] = true
+			local way = self._startpos.y - pos.y
+			local damage = (way - 1) * 2
+			damage = math.min(40, math.max(0, damage))
+			if damage >= 1 then
+				-- Reduce damage if wearing a helmet
+				local inv = mcl_util.get_inventory(obj)
+				if inv then
+					local helmet = inv:get_stack("armor", 2)
+					if minetest.get_item_group(helmet:get_name(), "combat_armor") > 0 then
+						damage = damage / 4 * 3
+						mcl_util.use_item_durability(helmet, 1)
+						inv:set_stack("armor", 2, helmet)
 					end
-					if v:is_player() then
-						-- TODO: Reduce damage if wearing a helmet
-						local msg
-						if minetest.get_item_group(self.node.name, "anvil") ~= 0 then
-							msg = S("@1 was smashed by a falling anvil.", v:get_player_name())
-						else
-							msg = S("@1 was smashed by a falling block.", v:get_player_name())
-						end
-						if dmes then
-							mcl_death_messages.player_damage(v, msg)
-						end
-					end
-					v:set_hp(hp, { type = "punch", from = "mod" })
 				end
+				local dmg_type
+				if minetest.get_item_group(self.node.name, "anvil") ~= 0 then
+					dmg_type = "anvil"
+				else
+					dmg_type = "falling_node"
+				end
+				mcl_util.deal_damage(obj, damage, {type = dmg_type})
 			end
 		end
 	end
@@ -74,10 +60,8 @@ minetest.register_entity(":__builtin:falling_node", {
 		collide_with_objects = false,
 		collisionbox = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5},
 	},
-
 	node = {},
 	meta = {},
-
 	set_node = function(self, node, meta)
 		local def = minetest.registered_nodes[node.name]
 		-- Change falling node if definition tells us to
@@ -104,7 +88,6 @@ minetest.register_entity(":__builtin:falling_node", {
 			glow = glow,
 		})
 	end,
-
 	get_staticdata = function(self)
 		local meta = self.meta
 		-- Workaround: Save inventory seperately from metadata.
@@ -125,10 +108,9 @@ minetest.register_entity(":__builtin:falling_node", {
 		}
 		return minetest.serialize(ds)
 	end,
-
 	on_activate = function(self, staticdata)
 		self.object:set_armor_groups({immortal = 1})
-		
+
 		local ds = minetest.deserialize(staticdata)
 		if ds then
 			self._startpos = ds._startpos
@@ -148,7 +130,6 @@ minetest.register_entity(":__builtin:falling_node", {
 		end
 		self._startpos = vector.round(self._startpos)
 	end,
-
 	on_step = function(self, dtime)
 		-- Set gravity
 		local acceleration = self.object:get_acceleration()
@@ -162,7 +143,7 @@ minetest.register_entity(":__builtin:falling_node", {
 		local np = {x = pos.x, y = pos.y + 0.3, z = pos.z}
 		local n2 = minetest.get_node(np)
 		if n2.name == "mcl_portals:portal_end" then
-			-- TODO: Teleport falling node. 
+			-- TODO: Teleport falling node.
 			self.object:remove()
 			return
 		end
@@ -200,10 +181,9 @@ minetest.register_entity(":__builtin:falling_node", {
 				return
 			end
 			local nd = minetest.registered_nodes[n2.name]
-			if n2.name == "mcl_portals:portal_end" then
-				-- TODO: Teleport falling node. 
-
-			elseif (nd and nd.buildable_to == true) or minetest.get_item_group(self.node.name, "crush_after_fall") ~= 0 then
+			--if n2.name == "mcl_portals:portal_end" then
+			-- TODO: Teleport falling node.
+            if (nd and nd.buildable_to == true) or minetest.get_item_group(self.node.name, "crush_after_fall") ~= 0 then
 				-- Replace destination node if it's buildable to
 				minetest.remove_node(np)
 				-- Run script hook
@@ -270,7 +250,6 @@ minetest.register_entity(":__builtin:falling_node", {
 				self.object:set_pos(npos)
 			end
 		end
-
 		deal_falling_damage(self, dtime)
 	end
 })

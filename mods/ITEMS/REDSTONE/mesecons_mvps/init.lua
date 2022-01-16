@@ -1,3 +1,5 @@
+local table = table
+
 --register stoppers for movestones/pistons
 
 mesecon.mvps_stoppers = {}
@@ -5,8 +7,6 @@ mesecon.mvps_unsticky = {}
 mesecon.mvps_droppers = {}
 mesecon.on_mvps_move = {}
 mesecon.mvps_unmov = {}
-
-local is_protected = minetest.is_protected
 
 --- Objects (entities) that cannot be moved
 function mesecon.register_mvps_unmov(objectname)
@@ -74,6 +74,7 @@ function mesecon.is_mvps_unsticky(node, pulldir, stack, stackid)
 end
 
 -- Functions to be called on mvps movement
+-- See also the callback
 function mesecon.register_on_mvps_move(callback)
 	mesecon.on_mvps_move[#mesecon.on_mvps_move+1] = callback
 end
@@ -150,6 +151,7 @@ function mesecon.mvps_get_stack(pos, dir, maximum, piston_pos)
 			-- add connected nodes to frontiers, connected is a vector list
 			-- the vectors must be absolute positions
 			local connected = {}
+            local has_loop
 			if minetest.registered_nodes[nn.name]
 			and minetest.registered_nodes[nn.name].mvps_sticky then
 				connected, has_loop = minetest.registered_nodes[nn.name].mvps_sticky(np, nn, piston_pos)
@@ -257,7 +259,7 @@ function mesecon.mvps_push_or_pull(pos, stackdir, movedir, maximum, player_name,
 		n.meta = minetest.get_meta(n.pos):to_table()
 		local is_dropper = mesecon.is_mvps_dropper(n.node, movedir, nodes, id)
 		if is_dropper then
-			local drops = minetest.get_node_drops(n.node.name, "")
+			--local drops = minetest.get_node_drops(n.node.name, "")
 			minetest.dig_node(n.pos)
 		else
 			minetest.remove_node(n.pos)
@@ -405,17 +407,20 @@ mesecon.register_mvps_unsticky("mcl_colorblocks:glazed_terracotta_brown")
 mesecon.register_mvps_unsticky("mcl_colorblocks:glazed_terracotta_light_blue")
 mesecon.register_mvps_unsticky("mcl_colorblocks:glazed_terracotta_pink")
 
+-- Includes node heat when moving them
 mesecon.register_on_mvps_move(mesecon.move_hot_nodes)
 
--- Check for falling after moving node
 mesecon.register_on_mvps_move(function(moved_nodes)
 	for i = 1, #moved_nodes do
 		local moved_node = moved_nodes[i]
+		-- Check for falling after moving node
 		mesecon.on_placenode(moved_node.pos, moved_node.node)
 		minetest.after(0, function()
 			minetest.check_for_falling(moved_node.oldpos)
 			minetest.check_for_falling(moved_node.pos)
 		end)
+
+		-- Callback for on_mvps_move stored in nodedef
 		local node_def = minetest.registered_nodes[moved_node.node.name]
 		if node_def and node_def.mesecon and node_def.mesecon.on_mvps_move then
 			node_def.mesecon.on_mvps_move(moved_node.pos, moved_node.node,

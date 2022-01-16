@@ -118,17 +118,6 @@ def colorize_alpha(colormap, source, colormap_pixel, texture_size, destination):
 	colorize(colormap, source, colormap_pixel, texture_size, tempfile2.name)
 	os.system("composite -compose Dst_In "+source+" "+tempfile2.name+" -alpha Set "+destination)
 
-# This function is unused atm.
-# TODO: Implemnt colormap extraction
-def extract_colormap(colormap, colormap_pixel, positions):
-	os.system("convert -size 16x16 canvas:black "+tempfile1.name)
-	x=0
-	y=0
-	for p in positions:
-		os.system("convert "+colormap+" -crop 1x1+"+colormap_pixel+" -depth 8 "+tempfile2.name)
-		os.system("composite -geometry 16x16+"+x+"+"+y+" "+tempfile2.name)
-		x = x+1
-
 def target_dir(directory):
 	if make_texture_pack:
 		return output_dir + "/" + output_dir_name
@@ -196,13 +185,19 @@ def convert_textures():
 				if verbose:
 					print(src_file + " → " + dst_file)
 
+	# Convert map background
+	map_background_file = tex_dir + "/map/map_background.png"
+	if os.path.isfile(map_background_file):
+		os.system("convert " + map_background_file + " -interpolate Integer -filter point -resize \"140x140\" " + target_dir("/mods/ITEMS/mcl_maps/textures") + "/mcl_maps_map_background.png")
+
 	# Convert armor textures (requires ImageMagick)
 	armor_files = [
 		[ tex_dir + "/models/armor/leather_layer_1.png", tex_dir + "/models/armor/leather_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_leather.png", "mcl_armor_chestplate_leather.png", "mcl_armor_leggings_leather.png", "mcl_armor_boots_leather.png" ],
 		[ tex_dir + "/models/armor/chainmail_layer_1.png", tex_dir + "/models/armor/chainmail_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_chain.png", "mcl_armor_chestplate_chain.png", "mcl_armor_leggings_chain.png", "mcl_armor_boots_chain.png" ],
 		[ tex_dir + "/models/armor/gold_layer_1.png", tex_dir + "/models/armor/gold_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_gold.png", "mcl_armor_chestplate_gold.png", "mcl_armor_leggings_gold.png", "mcl_armor_boots_gold.png" ],
 		[ tex_dir + "/models/armor/iron_layer_1.png", tex_dir + "/models/armor/iron_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_iron.png", "mcl_armor_chestplate_iron.png", "mcl_armor_leggings_iron.png", "mcl_armor_boots_iron.png" ],
-		[ tex_dir + "/models/armor/diamond_layer_1.png", tex_dir + "/models/armor/diamond_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_diamond.png", "mcl_armor_chestplate_diamond.png", "mcl_armor_leggings_diamond.png", "mcl_armor_boots_diamond.png" ]
+		[ tex_dir + "/models/armor/diamond_layer_1.png", tex_dir + "/models/armor/diamond_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_diamond.png", "mcl_armor_chestplate_diamond.png", "mcl_armor_leggings_diamond.png", "mcl_armor_boots_diamond.png" ],
+        [ tex_dir + "/models/armor/netherite_layer_1.png", tex_dir + "/models/armor/netherite_layer_2.png", target_dir("/mods/ITEMS/mcl_armor/textures"), "mcl_armor_helmet_netherite.png", "mcl_armor_chestplate_netherite.png", "mcl_armor_leggings_netherite.png", "mcl_armor_boots_netherite.png" ]
 	]
 	for a in armor_files:
 		APXSIZE = 16	# for some reason MineClone2 requires this
@@ -392,20 +387,60 @@ def convert_textures():
 		colorize_alpha(FOLIAG, tex_dir+"/blocks/vine.png", "16+39", str(PXSIZE), target_dir("/mods/ITEMS/mcl_core/textures")+"/mcl_core_vine.png")
 
 		# Tall grass, fern (inventory images)
-		pcol = "49+172" # Plains grass color
+		pcol = "50+173" # Plains grass color
 		colorize_alpha(GRASS, tex_dir+"/blocks/tallgrass.png", pcol, str(PXSIZE), target_dir("/mods/ITEMS/mcl_flowers/textures")+"/mcl_flowers_tallgrass_inv.png")
 		colorize_alpha(GRASS, tex_dir+"/blocks/fern.png", pcol, str(PXSIZE), target_dir("/mods/ITEMS/mcl_flowers/textures")+"/mcl_flowers_fern_inv.png")
 		colorize_alpha(GRASS, tex_dir+"/blocks/double_plant_fern_top.png", pcol, str(PXSIZE), target_dir("/mods/ITEMS/mcl_flowers/textures")+"/mcl_flowers_double_plant_fern_inv.png")
 		colorize_alpha(GRASS, tex_dir+"/blocks/double_plant_grass_top.png", pcol, str(PXSIZE), target_dir("/mods/ITEMS/mcl_flowers/textures")+"/mcl_flowers_double_plant_grass_inv.png")
 
-		# TODO: Convert grass palette
-
-		offset = [
-			[ pcol, "", "grass" ], # Default grass: Plains
+		# Convert grass palette: https://minecraft.fandom.com/wiki/Tint
+		grass_colors = [
+			# [Coords or #Color, AdditionalTint], # Index - Minecraft biome name (MineClone2 biome names)
+			["50+173"], # 0 - Plains (flat, Plains, Plains_beach, Plains_ocean, End)
+			["0+255"], # 1 - Savanna (Savanna, Savanna_beach, Savanna_ocean)
+			["255+255"], # 2 - Ice Spikes (IcePlainsSpikes, IcePlainsSpikes_ocean)
+			["255+255"], # 3 - Snowy Taiga (ColdTaiga, ColdTaiga_beach, ColdTaiga_beach_water, ColdTaiga_ocean)
+			["178+193"], # 4 - Giant Tree Taiga (MegaTaiga, MegaTaiga_ocean)
+			["178+193"], # 5 - Giant Tree Taiga (MegaSpruceTaiga, MegaSpruceTaiga_ocean)
+			["203+239"], # 6 - Montains (ExtremeHills, ExtremeHills_beach, ExtremeHills_ocean)
+			["203+239"], # 7 - Montains (ExtremeHillsM, ExtremeHillsM_ocean)
+			["203+239"], # 8 - Montains (ExtremeHills+, ExtremeHills+_snowtop, ExtremeHills+_ocean)
+			["50+173"], # 9 - Beach (StoneBeach, StoneBeach_ocean)
+			["255+255"], # 10 - Snowy Tundra (IcePlains, IcePlains_ocean)
+			["50+173"], # 11 - Sunflower Plains (SunflowerPlains, SunflowerPlains_ocean)
+			["191+203"], # 12 - Taiga (Taiga, Taiga_beach, Taiga_ocean)
+			["76+112"], # 13 - Forest (Forest, Forest_beach, Forest_ocean)
+			["76+112"], # 14 - Flower Forest (FlowerForest, FlowerForest_beach, FlowerForest_ocean)
+			["101+163"], # 15 - Birch Forest (BirchForest, BirchForest_ocean)
+			["101+163"], # 16 - Birch Forest Hills (BirchForestM, BirchForestM_ocean)
+			["0+255"], # 17 - Desert and Nether (Desert, Desert_ocean, Nether)
+			["76+112", "#28340A"], # 18 - Dark Forest (RoofedForest, RoofedForest_ocean)
+			["#90814d"], # 19 - Mesa (Mesa, Mesa_sandlevel, Mesa_ocean, )
+			["#90814d"], # 20 - Mesa (MesaBryce, MesaBryce_sandlevel, MesaBryce_ocean)
+			["#90814d"], # 21 - Mesa (MesaPlateauF, MesaPlateauF_grasstop, MesaPlateauF_sandlevel, MesaPlateauF_ocean)
+			["#90814d"], # 22 - Mesa (MesaPlateauFM, MesaPlateauFM_grasstop, MesaPlateauFM_sandlevel, MesaPlateauFM_ocean)
+			["0+255"], # 23 - Shattered Savanna (or Savanna Plateau ?) (SavannaM, SavannaM_ocean)
+			["12+36"], # 24 - Jungle (Jungle, Jungle_shore, Jungle_ocean)
+			["12+36"], # 25 - Modified Jungle (JungleM, JungleM_shore, JungleM_ocean)
+			["12+61"], # 26 - Jungle Edge (JungleEdge, JungleEdge_ocean)
+			["12+61"], # 27 - Modified Jungle Edge (JungleEdgeM, JungleEdgeM_ocean)
+			["#6A7039"], # 28 - Swamp (Swampland, Swampland_shore, Swampland_ocean)
+			["25+25"], # 29 - Mushroom Fields and Mushroom Field Shore (MushroomIsland, MushroomIslandShore, MushroomIsland_ocean)
 		]
-		for o in offset:
-			colorize(GRASS, tex_dir+"/blocks/grass_top.png", o[0], str(PXSIZE), target_dir("/mods/ITEMS/mcl_core/textures")+"/default_"+o[2]+".png")
-			colorize_alpha(GRASS, tex_dir+"/blocks/grass_side_overlay.png", o[0], str(PXSIZE), target_dir("/mods/ITEMS/mcl_core/textures")+"/default_"+o[2]+"_side.png")
+
+		grass_palette_file = target_dir("/mods/ITEMS/mcl_core/textures") + "/mcl_core_palette_grass.png"
+		os.system("convert -size 16x16 canvas:transparent " + grass_palette_file)
+
+		for i, color in enumerate(grass_colors):
+			if color[0][0] == "#":
+				os.system("convert -size 1x1 xc:\"" + color[0] + "\" " + tempfile1.name + ".png")
+			else:
+				os.system("convert " + GRASS + " -crop 1x1+" + color[0] + " " + tempfile1.name + ".png")
+
+			if len(color) > 1:
+				os.system("convert " + tempfile1.name + ".png \\( -size 1x1 xc:\"" + color[1] + "\" \\) -compose blend -define compose:args=50,50 -composite " + tempfile1.name + ".png")
+
+			os.system("convert " + grass_palette_file + " \\( " + tempfile1.name + ".png -geometry +" + str(i % 16) + "+" + str(int(i / 16)) + " \\) -composite " + grass_palette_file)
 
 		# Metadata
 		if make_texture_pack:

@@ -1,5 +1,7 @@
 -- FIXME: Chests may appear at openings
 
+mcl_dungeons = {}
+
 local mg_name = minetest.get_mapgen_setting("mg_name")
 
 -- Are dungeons disabled?
@@ -7,8 +9,38 @@ if mcl_vars.mg_dungeons == false or mg_name == "singlenode" then
 	return
 end
 
-local min_y = math.max(mcl_vars.mg_overworld_min, mcl_vars.mg_bedrock_overworld_max) + 1
+--lua locals
+--minetest
+local registered_nodes = minetest.registered_nodes
+local swap_node        = minetest.swap_node
+local set_node         = minetest.set_node
+local dir_to_facedir   = minetest.dir_to_facedir
+local get_meta         = minetest.get_meta
+local emerge_area      = minetest.emerge_area
+
+--vector
+local vector_add       = vector.add
+local vector_subtract  = vector.subtract
+
+--table
+local table_insert     = table.insert
+local table_sort       = table.sort
+
+--math
+local math_min         = math.min
+local math_max         = math.max
+local math_ceil        = math.ceil
+
+--custom mcl_vars
+local get_node = mcl_vars.get_node
+
+
+local min_y = math_max(mcl_vars.mg_overworld_min, mcl_vars.mg_bedrock_overworld_max) + 1
 local max_y = mcl_vars.mg_overworld_max - 1
+-- Calculate the number of dungeon spawn attempts
+-- In Minecraft, there 8 dungeon spawn attempts per Minecraft chunk (16*256*16 = 65536 blocks).
+-- Minetest chunks don't have this size, so scale the number accordingly.
+local attempts = math_ceil(((mcl_vars.chunksize * mcl_vars.MAP_BLOCKSIZE) ^ 3) / 8192) -- 63 = 80*80*80/8192
 
 local dungeonsizes = {
 	{ x=5, y=4, z=5},
@@ -17,12 +49,12 @@ local dungeonsizes = {
 	{ x=7, y=4, z=7},
 }
 
-local dirs = {
+--[[local dirs = {
 	{ x= 1, y=0, z= 0 },
 	{ x= 0, y=0, z= 1 },
 	{ x=-1, y=0, z= 0 },
 	{ x= 0, y=0, z=-1 },
-}
+}]]
 
 local surround_vectors = {
 	{ x=-1, y=0, z=0 },
@@ -43,7 +75,9 @@ local loottable =
 			{ itemstring = "mcl_jukebox:record_4", weight = 15 },
 			{ itemstring = "mobs_mc:iron_horse_armor", weight = 15 },
 			{ itemstring = "mcl_core:apple_gold", weight = 15 },
-			{ itemstack = mcl_enchanting.get_uniform_randomly_enchanted_book({"soul_speed"}), weight = 10 },
+			{ itemstring = "mcl_books:book", weight = 10, func = function(stack, pr)
+				mcl_enchanting.enchant_uniform_randomly(stack, {"soul_speed"}, pr)
+			end },
 			{ itemstring = "mobs_mc:gold_horse_armor", weight = 10 },
 			{ itemstring = "mobs_mc:diamond_horse_armor", weight = 5 },
 			{ itemstring = "mcl_core:apple_gold_enchanted", weight = 2 },
@@ -90,25 +124,20 @@ if mg_name == "v6" then
 	})
 end
 
-
--- Calculate the number of dungeon spawn attempts
--- In Minecraft, there 8 dungeon spawn attempts Minecraft chunk (16*256*16 = 65536 blocks).
--- Minetest chunks don't have this size, so scale the number accordingly.
-local attempts = math.ceil(((mcl_vars.chunksize * mcl_vars.MAP_BLOCKSIZE) ^ 3) / 8192) -- 63 = 80*80*80/8192
-
 local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 	if calls_remaining >= 1 then return end
 
-	local p1, p2, dim, pr = param.p1, param.p2, param.dim, param.pr
+	local p1, _, dim, pr = param.p1, param.p2, param.dim, param.pr
 	local x, y, z = p1.x, p1.y, p1.z
+	local check = not (param.dontcheck or false)
 
 	-- Check floor and ceiling: Must be *completely* solid
 	local y_floor = y
 	local y_ceiling = y + dim.y + 1
-	for tx = x, x + dim.x do for tz = z, z + dim.z do
-		if not minetest.registered_nodes[mcl_mapgen_core.get_node({x = tx, y = y_floor  , z = tz}).name].walkable
-		or not minetest.registered_nodes[mcl_mapgen_core.get_node({x = tx, y = y_ceiling, z = tz}).name].walkable then return false end
-	end end
+	if check then for tx = x+1, x+dim.x do for tz = z+1, z+dim.z do
+		if not registered_nodes[get_node({x = tx, y = y_floor  , z = tz}).name].walkable
+		or not registered_nodes[get_node({x = tx, y = y_ceiling, z = tz}).name].walkable then return false end
+	end end end
 
 	-- Check for air openings (2 stacked air at ground level) in wall positions
 	local openings_counter = 0
@@ -118,36 +147,59 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 	-- so entities can get through.
 	local corners = {}
 
-	local walls = {
-		-- walls along x axis (contain corners)
-		{ x, x+dim.x+1, "x", "z", z },
-		{ x, x+dim.x+1, "x", "z", z+dim.z+1 },
-		-- walls along z axis (exclude corners)
-		{ z+1, z+dim.z, "z", "x", x },
-		{ z+1, z+dim.z, "z", "x", x+dim.x+1 },
-	}
+	local x2,z2 = x+dim.x+1, z+dim.z+1
 
-	for w=1, #walls do
-		local wall = walls[w]
-		for iter = wall[1], wall[2] do
-			local pos = {}
-			pos[wall[3]] = iter
-			pos[wall[4]] = wall[5]
-			pos.y = y+1
+	if get_node({x=x, y=y+1, z=z}).name == "air" and get_node({x=x, y=y+2, z=z}).name == "air" then
+		openings_counter = openings_counter + 1
+		if not openings[x] then openings[x]={} end
+		openings[x][z] = true
+		table_insert(corners, {x=x, z=z})
+	end
+	if get_node({x=x2, y=y+1, z=z}).name == "air" and get_node({x=x2, y=y+2, z=z}).name == "air" then
+		openings_counter = openings_counter + 1
+		if not openings[x2] then openings[x2]={} end
+		openings[x2][z] = true
+		table_insert(corners, {x=x2, z=z})
+	end
+	if get_node({x=x, y=y+1, z=z2}).name == "air" and get_node({x=x, y=y+2, z=z2}).name == "air" then
+		openings_counter = openings_counter + 1
+		if not openings[x] then openings[x]={} end
+		openings[x][z2] = true
+		table_insert(corners, {x=x, z=z2})
+	end
+	if get_node({x=x2, y=y+1, z=z2}).name == "air" and get_node({x=x2, y=y+2, z=z2}).name == "air" then
+		openings_counter = openings_counter + 1
+		if not openings[x2] then openings[x2]={} end
+		openings[x2][z2] = true
+		table_insert(corners, {x=x2, z=z2})
+	end
 
-			if openings[pos.x] == nil then openings[pos.x] = {} end
-			local doorname1 = mcl_mapgen_core.get_node(pos).name
-			pos.y = y+2
-			local doorname2 = mcl_mapgen_core.get_node(pos).name
-			if doorname1 == "air" and doorname2 == "air" then
-				openings_counter = openings_counter + 1
-				openings[pos.x][pos.z] = true
-
-				-- Record corners
-				if wall[3] == "x" and (iter == wall[1] or iter == wall[2]) then
-					table.insert(corners, {x=pos.x, z=pos.z})
-				end
-			end
+	for wx = x+1, x+dim.x do
+		if get_node({x=wx, y=y+1, z=z}).name == "air" and get_node({x=wx, y=y+2, z=z}).name == "air" then
+			openings_counter = openings_counter + 1
+			if check and openings_counter > 5 then return end
+			if not openings[wx] then openings[wx]={} end
+			openings[wx][z] = true
+		end
+		if get_node({x=wx, y=y+1, z=z2}).name == "air" and get_node({x=wx, y=y+2, z=z2}).name == "air" then
+			openings_counter = openings_counter + 1
+			if check and openings_counter > 5 then return end
+			if not openings[wx] then openings[wx]={} end
+			openings[wx][z2] = true
+		end
+	end
+	for wz = z+1, z+dim.z do
+		if get_node({x=x, y=y+1, z=wz}).name == "air" and get_node({x=x, y=y+2, z=wz}).name == "air" then
+			openings_counter = openings_counter + 1
+			if check and openings_counter > 5 then return end
+			if not openings[x] then openings[x]={} end
+			openings[x][wz] = true
+		end
+		if get_node({x=x2, y=y+1, z=wz}).name == "air" and get_node({x=x2, y=y+2, z=wz}).name == "air" then
+			openings_counter = openings_counter + 1
+			if check and openings_counter > 5 then return end
+			if not openings[x2] then openings[x2]={} end
+			openings[x2][wz] = true
 		end
 	end
 
@@ -175,6 +227,7 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 			openings[cx][czn] = true
 			openings_counter = openings_counter + 1
 			if openings_counter < 5 then
+				if not openings[cxn] then openings[cxn]={} end
 				openings[cxn][cz] = true
 				openings_counter = openings_counter + 1
 			end
@@ -182,7 +235,7 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 	end
 
 	-- Check conditions. If okay, start generating
-	if openings_counter < 1 or openings_counter > 5 then return end
+	if check and (openings_counter < 1 or openings_counter > 5) then return end
 
 	minetest.log("action","[mcl_dungeons] Placing new dungeon at "..minetest.pos_to_string({x=x,y=y,z=z}))
 	-- Okay! Spawning starts!
@@ -196,7 +249,7 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 
 	-- We assign each position at the wall a number and each chest gets one of these numbers randomly
 	local totalChests = 2 -- this code strongly relies on this number being 2
-	local totalChestSlots = (dim.x-1) * (dim.z-1)
+	local totalChestSlots = (dim.x + dim.z - 2) * 2
 	local chestSlots = {}
 	-- There is a small chance that both chests have the same slot.
 	-- In that case, we give a 2nd chance for the 2nd chest to get spawned.
@@ -211,16 +264,16 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 			secondChance = false
 		end
 		lastRandom = r
-		table.insert(chestSlots, r)
+		table_insert(chestSlots, r)
 	end
-	table.sort(chestSlots)
+	table_sort(chestSlots)
 	local currentChest = 1
 
 	-- Calculate the mob spawner position, to be re-used for later
-	local sp = {x = x + math.ceil(dim.x/2), y = y+1, z = z + math.ceil(dim.z/2)}
-	local rn = minetest.registered_nodes[mcl_mapgen_core.get_node(sp).name]
+	local sp = {x = x + math_ceil(dim.x/2), y = y+1, z = z + math_ceil(dim.z/2)}
+	local rn = registered_nodes[get_node(sp).name]
 	if rn and rn.is_ground_content then
-		table.insert(spawner_posses, sp)
+		table_insert(spawner_posses, sp)
 	end
 
 	-- Generate walls and floor
@@ -233,14 +286,14 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 
 		-- Do not overwrite nodes with is_ground_content == false (e.g. bedrock)
 		-- Exceptions: cobblestone and mossy cobblestone so neighborings dungeons nicely connect to each other
-		local name = mcl_mapgen_core.get_node(p).name
-		if name == "mcl_core:cobble" or name == "mcl_core:mossycobble" or minetest.registered_nodes[name].is_ground_content then
+		local name = get_node(p).name
+		if registered_nodes[name].is_ground_content or name == "mcl_core:cobble" or name == "mcl_core:mossycobble" then
 			-- Floor
 			if ty == y then
 				if pr:next(1,4) == 1 then
-					minetest.swap_node(p, {name = "mcl_core:cobble"})
+					swap_node(p, {name = "mcl_core:cobble"})
 				else
-					minetest.swap_node(p, {name = "mcl_core:mossycobble"})
+					swap_node(p, {name = "mcl_core:mossycobble"})
 				end
 
 				-- Generate walls
@@ -248,31 +301,38 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 				The solid blocks above the dungeon are considered as the “ceiling”.
 				It is possible (but rare) for a dungeon to generate below sand or gravel. ]]
 
-			elseif ty > y and (tx == x or tx == maxx or (tz == z or tz == maxz)) then
+			elseif tx == x or tz == z or tx == maxx or tz == maxz then
 				-- Check if it's an opening first
-				if (not openings[tx][tz]) or ty == maxy then
+				if (ty == maxy) or (not (openings[tx] and openings[tx][tz]))  then
 					-- Place wall or ceiling
-					minetest.swap_node(p, {name = "mcl_core:cobble"})
+					swap_node(p, {name = "mcl_core:cobble"})
 				elseif ty < maxy - 1 then
 					-- Normally the openings are already clear, but not if it is a corner
 					-- widening. Make sure to clear at least the bottom 2 nodes of an opening.
-					minetest.swap_node(p, {name = "air"})
-				elseif ty == maxy - 1 and mcl_mapgen_core.get_node(p).name ~= "air" then
+					if name ~= "air" then swap_node(p, {name = "air"}) end
+				elseif name ~= "air" then
 					-- This allows for variation between 2-node and 3-node high openings.
-					minetest.swap_node(p, {name = "mcl_core:cobble"})
+					swap_node(p, {name = "mcl_core:cobble"})
 				end
 				-- If it was an opening, the lower 3 blocks are not touched at all
 
 			-- Room interiour
 			else
+				if (ty==y+1) and (tx==x+1 or tx==maxx-1 or tz==z+1 or tz==maxz-1) and (currentChest < totalChests + 1) and (chestSlots[currentChest] == chestSlotCounter) then
+					currentChest = currentChest + 1
+					table_insert(chests, {x=tx, y=ty, z=tz})
+				else
+					swap_node(p, {name = "air"})
+				end
+
 				local forChest = ty==y+1 and (tx==x+1 or tx==maxx-1 or tz==z+1 or tz==maxz-1)
 
 				-- Place next chest at the wall (if it was its chosen wall slot)
 				if forChest and (currentChest < totalChests + 1) and (chestSlots[currentChest] == chestSlotCounter) then
 					currentChest = currentChest + 1
-					table.insert(chests, {x=tx, y=ty, z=tz})
-				else
-					minetest.swap_node(p, {name = "air"})
+					table_insert(chests, {x=tx, y=ty, z=tz})
+				-- else
+					--swap_node(p, {name = "air"})
 				end
 				if forChest then
 					chestSlotCounter = chestSlotCounter + 1
@@ -287,15 +347,15 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 		local surroundings = {}
 		for s=1, #surround_vectors do
 			-- Detect the 4 horizontal neighbors
-			local spos = vector.add(pos, surround_vectors[s])
-			local wpos = vector.subtract(pos, surround_vectors[s])
-			local nodename = minetest.get_node(spos).name
-			local nodename2 = minetest.get_node(wpos).name
-			local nodedef = minetest.registered_nodes[nodename]
-			local nodedef2 = minetest.registered_nodes[nodename2]
+			local spos = vector_add(pos, surround_vectors[s])
+			local wpos = vector_subtract(pos, surround_vectors[s])
+			local nodename = get_node(spos).name
+			local nodename2 = get_node(wpos).name
+			local nodedef = registered_nodes[nodename]
+			local nodedef2 = registered_nodes[nodename2]
 			-- The chest needs an open space in front of it and a walkable node (except chest) behind it
 			if nodedef and nodedef.walkable == false and nodedef2 and nodedef2.walkable == true and nodename2 ~= "mcl_chests:chest" then
-				table.insert(surroundings, spos)
+				table_insert(surroundings, spos)
 			end
 		end
 		-- Set param2 (=facedir) of this chest
@@ -306,11 +366,12 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 		else
 			-- 1 or multiple possible open directions: Choose random facedir
 			local face_to = surroundings[pr:next(1, #surroundings)]
-			facedir = minetest.dir_to_facedir(vector.subtract(pos, face_to))
+			facedir = dir_to_facedir(vector_subtract(pos, face_to))
 		end
 
-		minetest.set_node(pos, {name="mcl_chests:chest", param2=facedir})
-		local meta = minetest.get_meta(pos)
+		set_node(pos, {name="mcl_chests:chest", param2=facedir})
+		local meta = get_meta(pos)
+		minetest.log("action", "[mcl_dungeons] Filling chest " .. tostring(c) .. " at " .. minetest.pos_to_string(pos))
 		mcl_loot.fill_inventory(meta:get_inventory(), "main", mcl_loot.get_multi_loot(loottable, pr), pr)
 	end
 
@@ -319,12 +380,12 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 	for s=#spawner_posses, 1, -1 do
 		local sp = spawner_posses[s]
 		-- ... and place it and select a random mob
-		minetest.set_node(sp, {name = "mcl_mobspawners:spawner"})
+		set_node(sp, {name = "mcl_mobspawners:spawner"})
 		local mobs = {
-			"mobs_mc:zombie",
-			"mobs_mc:zombie",
+			"mobs_mc:rock_crawler",
+			"mobs_mc:cave_spider",
 			"mobs_mc:spider",
-			"mobs_mc:skeleton",
+			"mobs_mc:magma_cube_tiny",
 		}
 		local spawner_mob = mobs[pr:next(1, #mobs)]
 
@@ -333,20 +394,27 @@ local function ecb_spawn_dungeon(blockpos, action, calls_remaining, param)
 end
 
 local function dungeons_nodes(minp, maxp, blockseed)
-	local ymin, ymax = math.max(min_y, minp.y),  math.min(max_y, maxp.y)
+	local ymin, ymax = math_max(min_y, minp.y),  math_min(max_y, maxp.y)
 	if ymax < ymin then return false end
 	local pr = PseudoRandom(blockseed)
 	for a=1, attempts do
 		local dim = dungeonsizes[pr:next(1, #dungeonsizes)]
-		local x = pr:next(minp.x, maxp.x-dim.x-2)
-		local y = pr:next(ymin  , ymax  -dim.y-2)
-		local z = pr:next(minp.z, maxp.z-dim.z-2)
+		local x = pr:next(minp.x, maxp.x-dim.x-1)
+		local y = pr:next(ymin  , ymax  -dim.y-1)
+		local z = pr:next(minp.z, maxp.z-dim.z-1)
 		local p1 = {x=x,y=y,z=z}
 		local p2 = {x = x+dim.x+1, y = y+dim.y+1, z = z+dim.z+1}
 		minetest.log("verbose","[mcl_dungeons] size=" ..minetest.pos_to_string(dim) .. ", emerge from "..minetest.pos_to_string(p1) .. " to " .. minetest.pos_to_string(p2))
-		local param = {p1=p1, p2=p2, dim=dim, pr=pr}
-		minetest.emerge_area(p1, p2, ecb_spawn_dungeon, param)
+		emerge_area(p1, p2, ecb_spawn_dungeon, {p1=p1, p2=p2, dim=dim, pr=pr})
 	end
+end
+
+function mcl_dungeons.spawn_dungeon(p1, _, pr)
+	if not p1 or not pr or not p1.x or not p1.y or not p1.z then return end
+	local dim = dungeonsizes[pr:next(1, #dungeonsizes)]
+	local p2 = {x = p1.x+dim.x+1, y = p1.y+dim.y+1, z = p1.z+dim.z+1}
+	minetest.log("verbose","[mcl_dungeons] size=" ..minetest.pos_to_string(dim) .. ", emerge from "..minetest.pos_to_string(p1) .. " to " .. minetest.pos_to_string(p2))
+	emerge_area(p1, p2, ecb_spawn_dungeon, {p1=p1, p2=p2, dim=dim, pr=pr, dontcheck=true})
 end
 
 mcl_mapgen_core.register_generator("dungeons", nil, dungeons_nodes, 999999)

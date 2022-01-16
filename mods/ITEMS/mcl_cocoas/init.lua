@@ -1,12 +1,9 @@
-local S = minetest.get_translator("mcl_cocoas")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 mcl_cocoas = {}
 
 -- Place cocoa
-function mcl_cocoas.place(itemstack, placer, pointed_thing, plantname)
-
-	local pt = pointed_thing
-
+function mcl_cocoas.place(itemstack, placer, pt, plantname)
 	-- check if pointing at a node
 	if not pt or pt.type ~= "node" then
 		return
@@ -22,7 +19,7 @@ function mcl_cocoas.place(itemstack, placer, pointed_thing, plantname)
 	-- Am I right-clicking on something that has a custom on_rightclick set?
 	if placer and not placer:get_player_control().sneak then
 		if minetest.registered_nodes[under.name] and minetest.registered_nodes[under.name].on_rightclick then
-			return minetest.registered_nodes[under.name].on_rightclick(pointed_thing.under, under, placer, itemstack) or itemstack
+			return minetest.registered_nodes[under.name].on_rightclick(pt.under, under, placer, itemstack) or itemstack
 		end
 	end
 

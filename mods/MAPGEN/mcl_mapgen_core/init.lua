@@ -1,45 +1,8 @@
 mcl_mapgen_core = {}
-mcl_mapgen_core.registered_generators = {}
+local registered_generators = {}
 
 local lvm, nodes, param2 = 0, 0, 0
-
-local generating = {} -- generating chunks
-local chunks = {} -- intervals of chunks generated
-local function add_chunk(pos)
-	local n = mcl_vars.get_chunk_number(pos) -- unsigned int
-	local prev
-	for i, d in pairs(chunks) do
-		if n <= d[2] then -- we've found it
-			if (n == d[2]) or (n >= d[1]) then return end -- already here
-			if n == d[1]-1 then -- right before:
-				if prev and (prev[2] == n-1) then
-					prev[2] = d[2]
-					table.remove(chunks, i)
-					return
-				end
-				d[1] = n
-				return
-			end
-			if prev and (prev[2] == n-1) then --join to previous
-				prev[2] = n
-				return
-			end
-			table.insert(chunks, i, {n, n}) -- insert new interval before i
-			return
-		end
-		prev = d
-	end
-	chunks[#chunks] = {n, n}
-end
-function mcl_mapgen_core.is_generated(pos)
-	local n = mcl_vars.get_chunk_number(pos) -- unsigned int
-	for i, d in pairs(chunks) do
-		if n <= d[2] then
-			return (n >= d[1])
-		end
-	end
-	return false
-end
+local lvm_buffer = {}
 
 --
 -- Aliases for map generator outputs
@@ -91,12 +54,8 @@ local superflat = mg_name == "flat" and minetest.get_mapgen_setting("mcl_superfl
 
 local WITCH_HUT_HEIGHT = 3 -- Exact Y level to spawn witch huts at. This height refers to the height of the floor
 
--- End exit portal position. This is temporary.
--- TODO: Remove the exit portal generation when the ender dragon has been implemented.
-local END_EXIT_PORTAL_POS = table.copy(mcl_vars.mg_end_platform_pos)
-END_EXIT_PORTAL_POS.x = END_EXIT_PORTAL_POS.x - 30
-END_EXIT_PORTAL_POS.z = END_EXIT_PORTAL_POS.z - 3
-END_EXIT_PORTAL_POS.y = END_EXIT_PORTAL_POS.y - 3
+-- End exit portal position
+local END_EXIT_PORTAL_POS = vector.new(-3, -27003, -3)
 
 -- Content IDs
 local c_bedrock = minetest.get_content_id("mcl_core:bedrock")
@@ -106,21 +65,21 @@ local c_dirt = minetest.get_content_id("mcl_core:dirt")
 local c_dirt_with_grass = minetest.get_content_id("mcl_core:dirt_with_grass")
 local c_dirt_with_grass_snow = minetest.get_content_id("mcl_core:dirt_with_grass_snow")
 local c_sand = minetest.get_content_id("mcl_core:sand")
-local c_sandstone = minetest.get_content_id("mcl_core:sandstone")
+--local c_sandstone = minetest.get_content_id("mcl_core:sandstone")
 local c_void = minetest.get_content_id("mcl_core:void")
 local c_lava = minetest.get_content_id("mcl_core:lava_source")
 local c_water = minetest.get_content_id("mcl_core:water_source")
 local c_soul_sand = minetest.get_content_id("mcl_nether:soul_sand")
 local c_netherrack = minetest.get_content_id("mcl_nether:netherrack")
 local c_nether_lava = minetest.get_content_id("mcl_nether:nether_lava_source")
-local c_end_stone = minetest.get_content_id("mcl_end:end_stone")
+--local c_end_stone = minetest.get_content_id("mcl_end:end_stone")
 local c_realm_barrier = minetest.get_content_id("mcl_core:realm_barrier")
 local c_top_snow = minetest.get_content_id("mcl_core:snow")
 local c_snow_block = minetest.get_content_id("mcl_core:snowblock")
 local c_clay = minetest.get_content_id("mcl_core:clay")
 local c_leaves = minetest.get_content_id("mcl_core:leaves")
 local c_jungleleaves = minetest.get_content_id("mcl_core:jungleleaves")
-local c_jungletree = minetest.get_content_id("mcl_core:jungletree")
+--local c_jungletree = minetest.get_content_id("mcl_core:jungletree")
 local c_cocoa_1 = minetest.get_content_id("mcl_cocoas:cocoa_1")
 local c_cocoa_2 = minetest.get_content_id("mcl_cocoas:cocoa_2")
 local c_cocoa_3 = minetest.get_content_id("mcl_cocoas:cocoa_3")
@@ -806,7 +765,7 @@ local function register_mgv6_decorations()
 	})
 
 	-- Large flowers
-	local register_large_flower = function(name, seed, offset)
+	local function register_large_flower(name, seed, offset)
 		minetest.register_decoration({
 			deco_type = "schematic",
 			schematic = {
@@ -1210,18 +1169,18 @@ end
 -- minp and maxp (from an on_generated callback) and returns the real world coordinates
 -- as X, Z.
 -- Inverse function of xz_to_biomemap
-local biomemap_to_xz = function(index, minp, maxp)
+--[[local function biomemap_to_xz(index, minp, maxp)
 	local xwidth = maxp.x - minp.x + 1
 	local zwidth = maxp.z - minp.z + 1
 	local x = ((index-1) % xwidth) + minp.x
 	local z = ((index-1) / zwidth) + minp.z
 	return x, z
-end
+end]]
 
 -- Takes x and z coordinates and minp and maxp of a generated chunk
 -- (in on_generated callback) and returns a biomemap index)
 -- Inverse function of biomemap_to_xz
-local xz_to_biomemap_index = function(x, z, minp, maxp)
+local function xz_to_biomemap_index(x, z, minp, maxp)
 	local xwidth = maxp.x - minp.x + 1
 	local zwidth = maxp.z - minp.z + 1
 	local minix = x % xwidth
@@ -1286,6 +1245,45 @@ local function generate_clay(minp, maxp, blockseed, voxelmanip_data, voxelmanip_
 		end
 	end
 	return lvm_used
+end
+
+local dragon_spawn_pos = false
+local dragon_spawned, portal_generated = false, false
+
+local function spawn_ender_dragon()
+	local obj = minetest.add_entity(dragon_spawn_pos, "mobs_mc:enderdragon")
+	if not obj then return false end
+	local dragon_entity = obj:get_luaentity()
+	dragon_entity._initial = true
+	dragon_entity._portal_pos = pos
+	return obj
+end
+
+local function try_to_spawn_ender_dragon()
+	if spawn_ender_dragon() then
+		dragon_spawned = true
+		return
+	end
+	minetest.after(2, try_to_spawn_ender_dragon)
+	minetest.log("warning", "[mcl_mapgen_core] WARNING! Ender dragon doesn't want to spawn at "..minetest.pos_to_string(dragon_spawn_pos))
+end
+
+if portal_generated and not dragon_spawned then
+	minetest.after(10, try_to_spawn_ender_dragon)
+end
+
+local function generate_end_exit_portal(pos)
+	if dragon_spawn_pos then return false end
+	dragon_spawn_pos = vector.add(pos, vector.new(3, 11, 3))
+	mcl_structures.call_struct(pos, "end_exit_portal", nil, nil, function()
+		minetest.after(2, function()
+			minetest.emerge_area(vector.subtract(dragon_spawn_pos, {x = 64, y = 12, z = 5}), vector.add(dragon_spawn_pos, {x = 3, y = 3, z = 5}), function(blockpos, action, calls_remaining, param)
+				if calls_remaining > 0 then return end
+				minetest.after(2, try_to_spawn_ender_dragon)
+			end)
+		end)
+	end)
+	portal_generated = true
 end
 
 -- TODO: Try to use more efficient structure generating code
@@ -1433,7 +1431,7 @@ local function generate_structures(minp, maxp, blockseed, biomemap)
 
 									-- TODO: Spawn witch in or around hut when the mob sucks less.
 
-									local place_tree_if_free = function(pos, prev_result)
+									local function place_tree_if_free(pos, prev_result)
 										local nn = minetest.get_node(pos).name
 										if nn == "mcl_flowers:waterlily" or nn == "mcl_core:water_source" or nn == "mcl_core:water_flowing" or nn == "air" then
 											minetest.set_node(pos, {name="mcl_core:tree", param2=0})
@@ -1527,11 +1525,11 @@ local function generate_structures(minp, maxp, blockseed, biomemap)
 		for y=maxp.y, minp.y, -1 do
 			local p = {x=END_EXIT_PORTAL_POS.x, y=y, z=END_EXIT_PORTAL_POS.z}
 			if minetest.get_node(p).name == "mcl_end:end_stone" then
-				mcl_structures.call_struct(p, "end_exit_portal")
+				generate_end_exit_portal(p)
 				return
 			end
 		end
-		mcl_structures.call_struct(END_EXIT_PORTAL_POS, "end_exit_portal")
+		generate_end_exit_portal(END_EXIT_PORTAL_POS)
 	end
 end
 
@@ -1628,7 +1626,7 @@ local function generate_tree_decorations(minp, maxp, seed, data, param2_data, ar
 
 			if dir < 5
 			and data[p_pos] == c_air
-			and l ~= nil and l > 12 then
+			and l and l > 12 then
 				local c = pr:next(1, 3)
 				if c == 1 then
 					data[p_pos] = c_cocoa_1
@@ -1747,10 +1745,10 @@ local function generate_tree_decorations(minp, maxp, seed, data, param2_data, ar
 	return lvm_used
 end
 
-local pr_shroom = PseudoRandom(os.time()-24359)
 -- Generate mushrooms in caves manually.
 -- Minetest's API does not support decorations in caves yet. :-(
-local generate_underground_mushrooms = function(minp, maxp, seed)
+local function generate_underground_mushrooms(minp, maxp, seed)
+	local pr_shroom = PseudoRandom(seed-24359)
 	-- Generate rare underground mushrooms
 	-- TODO: Make them appear in groups, use Perlin noise
 	local min, max = mcl_vars.mg_lava_overworld_max + 4, 0
@@ -1765,7 +1763,7 @@ local generate_underground_mushrooms = function(minp, maxp, seed)
 		bpos = {x = stone[n].x, y = stone[n].y + 1, z = stone[n].z }
 
 		local l = minetest.get_node_light(bpos, 0.5)
-		if bpos.y >= min and bpos.y <= max and l ~= nil and l <= 12 and pr_shroom:next(1,1000) < 4 then
+		if bpos.y >= min and bpos.y <= max and l and l <= 12 and pr_shroom:next(1,1000) < 4 then
 			if pr_shroom:next(1,2) == 1 then
 				minetest.set_node(bpos, {name = "mcl_mushrooms:mushroom_brown"})
 			else
@@ -1775,7 +1773,6 @@ local generate_underground_mushrooms = function(minp, maxp, seed)
 	end
 end
 
-local pr_nether = PseudoRandom(os.time()+667)
 local nether_wart_chance
 if mg_name == "v6" then
 	nether_wart_chance = 85
@@ -1784,10 +1781,14 @@ else
 end
 -- Generate Nether decorations manually: Eternal fire, mushrooms, nether wart
 -- Minetest's API does not support decorations in caves yet. :-(
-local generate_nether_decorations = function(minp, maxp, seed)
+local function generate_nether_decorations(minp, maxp, seed)
+	local pr_nether = PseudoRandom(seed+667)
+
 	if minp.y > mcl_vars.mg_nether_max or maxp.y < mcl_vars.mg_nether_min then
 		return
 	end
+
+	minetest.log("action", "[mcl_mapgen_core] Nether decorations " .. minetest.pos_to_string(minp) .. " ... " .. minetest.pos_to_string(maxp))
 
 	-- TODO: Generate everything based on Perlin noise instead of PseudoRandom
 
@@ -1797,7 +1798,7 @@ local generate_nether_decorations = function(minp, maxp, seed)
 	local ssand = minetest.find_nodes_in_area_under_air(minp, maxp, {"mcl_nether:soul_sand"})
 
 	-- Helper function to spawn “fake” decoration
-	local special_deco = function(nodes, spawn_func)
+	local function special_deco(nodes, spawn_func)
 		for n = 1, #nodes do
 			bpos = {x = nodes[n].x, y = nodes[n].y + 1, z = nodes[n].z }
 
@@ -1825,7 +1826,7 @@ local generate_nether_decorations = function(minp, maxp, seed)
 	-- Note: Spawned *after* the fire because of light level checks
 	special_deco(rack, function(bpos)
 		local l = minetest.get_node_light(bpos, 0.5)
-		if bpos.y > mcl_vars.mg_lava_nether_max + 6 and l ~= nil and l <= 12 and pr_nether:next(1,1000) <= 4 then
+		if bpos.y > mcl_vars.mg_lava_nether_max + 6 and l and l <= 12 and pr_nether:next(1,1000) <= 4 then
 			-- TODO: Make mushrooms appear in groups, use Perlin noise
 			if pr_nether:next(1,2) == 1 then
 				minetest.set_node(bpos, {name = "mcl_mushrooms:mushroom_brown"})
@@ -1846,22 +1847,21 @@ local generate_nether_decorations = function(minp, maxp, seed)
 end
 
 minetest.register_on_generated(function(minp, maxp, blockseed)
-	add_chunk(minp)
+	minetest.log("action", "[mcl_mapgen_core] Generating chunk " .. minetest.pos_to_string(minp) .. " ... " .. minetest.pos_to_string(maxp))
 	local p1, p2 = {x=minp.x, y=minp.y, z=minp.z}, {x=maxp.x, y=maxp.y, z=maxp.z}
 	if lvm > 0 then
 		local lvm_used, shadow = false, false
-		local lb = {} -- buffer
 		local lb2 = {} -- param2
 		local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
 		local e1, e2 = {x=emin.x, y=emin.y, z=emin.z}, {x=emax.x, y=emax.y, z=emax.z}
 		local data2
-		local data = vm:get_data(lb)
+		local data = vm:get_data(lvm_buffer)
 		if param2 > 0 then
 			data2 = vm:get_param2_data(lb2)
 		end
 		local area = VoxelArea:new({MinEdge=e1, MaxEdge=e2})
 
-		for _, rec in pairs(mcl_mapgen_core.registered_generators) do
+		for _, rec in pairs(registered_generators) do
 			if rec.vf then
 				local lvm_used0, shadow0 = rec.vf(vm, data, data2, e1, e2, area, p1, p2, blockseed)
 				if lvm_used0 then
@@ -1886,18 +1886,18 @@ minetest.register_on_generated(function(minp, maxp, blockseed)
 	end
 
 	if nodes > 0 then
-		for _, rec in pairs(mcl_mapgen_core.registered_generators) do
+		for _, rec in pairs(registered_generators) do
 			if rec.nf then
 				rec.nf(p1, p2, blockseed)
 			end
 		end
 	end
 
---	add_chunk(minp)
+	mcl_vars.add_chunk(minp)
 end)
 
-minetest.register_on_generated=function(node_function)
-	mcl_mapgen_core.register_generator("mod_"..tostring(#mcl_mapgen_core.registered_generators+1), nil, node_function)
+function minetest.register_on_generated(node_function)
+	mcl_mapgen_core.register_generator("mod_"..tostring(#registered_generators+1), nil, node_function)
 end
 
 function mcl_mapgen_core.register_generator(id, lvm_function, node_function, priority, needs_param2)
@@ -1916,22 +1916,20 @@ function mcl_mapgen_core.register_generator(id, lvm_function, node_function, pri
 		needs_param2 = needs_param2,
 	}
 
-	mcl_mapgen_core.registered_generators[id] = new_record
-	table.sort(
-		mcl_mapgen_core.registered_generators,
-		function(a, b)
-			return (a.i < b.i) or ((a.i == b.i) and (a.vf ~= nil) and (b.vf == nil))
-		end)
+	registered_generators[id] = new_record
+	table.sort(registered_generators, function(a, b)
+		return (a.i < b.i) or ((a.i == b.i) and a.vf and (b.vf == nil))
+	end)
 end
 
 function mcl_mapgen_core.unregister_generator(id)
-	if not mcl_mapgen_core.registered_generators[id] then return end
-	local rec = mcl_mapgen_core.registered_generators[id]
-	mcl_mapgen_core.registered_generators[id] = nil
+	if not registered_generators[id] then return end
+	local rec = registered_generators[id]
+	registered_generators[id] = nil
 	if rec.vf then lvm = lvm - 1 end
-	if rev.nf then nodes = nodes - 1 end
+	if rec.nf then nodes = nodes - 1 end
 	if rec.needs_param2 then param2 = param2 - 1 end
-	if rec.needs_level0 then level0 = level0 - 1 end
+	--if rec.needs_level0 then level0 = level0 - 1 end
 end
 
 -- Generate basic layer-based nodes: void, bedrock, realm barrier, lava seas, etc.
@@ -1939,7 +1937,7 @@ end
 
 local bedrock_check
 if mcl_vars.mg_bedrock_is_rough then
-	bedrock_check = function(pos, _, pr)
+	function bedrock_check(pos, _, pr)
 		local y = pos.y
 		-- Bedrock layers with increasing levels of roughness, until a perfecly flat bedrock later at the bottom layer
 		-- This code assumes a bedrock height of 5 layers.
@@ -2011,7 +2009,7 @@ end
 
 -- Below the bedrock, generate air/void
 local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
-	local biomemap, ymin, ymax
+	local biomemap --ymin, ymax
 	local lvm_used = false
 	local pr = PseudoRandom(blockseed)
 
@@ -2064,7 +2062,7 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 		-- Snow and sand fixes. This code implements snow consistency
 		-- and fixes floating sand and cut plants.
 		-- A snowy grass block must be below a top snow or snow block at all times.
-		if emin.y <= mcl_vars.mg_overworld_max and emax.y >= mcl_vars.mg_overworld_min then
+		if minp.y <= mcl_vars.mg_overworld_max and maxp.y >= mcl_vars.mg_overworld_min then
 			-- v6 mapgen:
 			if mg_name == "v6" then
 
@@ -2078,7 +2076,7 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 					altogether if ANY of their nodes could not be placed.
 				2) Cavegen: Removes the bottom part, the upper part floats
 				3) Mudflow: Same as 2) ]]
-				local plants = minetest.find_nodes_in_area(emin, emax, "group:double_plant")
+				local plants = minetest.find_nodes_in_area(minp, maxp, "group:double_plant")
 				for n = 1, #plants do
 					local node = vm:get_node_at(plants[n])
 					local is_top = minetest.get_item_group(node.name, "double_plant") == 2
@@ -2109,7 +2107,7 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 					local n = nodes[n]
 					local p_pos = area:index(n.x, n.y, n.z)
 					local p_pos_above = area:index(n.x, n.y+1, n.z)
-					local p_pos_below = area:index(n.x, n.y-1, n.z)
+					--local p_pos_below = area:index(n.x, n.y-1, n.z)
 					local b_pos = aream:index(n.x, 0, n.z)
 					local bn = minetest.get_biome_name(biomemap[b_pos])
 					if bn then
@@ -2131,23 +2129,25 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 		-- * Replace water with Nether lava.
 		-- * Replace stone, sand dirt in v6 so the Nether works in v6.
 		elseif emin.y <= mcl_vars.mg_nether_max and emax.y >= mcl_vars.mg_nether_min then
-			local nodes
 			if mg_name == "v6" then
-				nodes = minetest.find_nodes_in_area(emin, emax, {"mcl_core:water_source", "mcl_core:stone", "mcl_core:sand", "mcl_core:dirt"})
+				local nodes = minetest.find_nodes_in_area(emin, emax, {"mcl_core:water_source", "mcl_core:stone", "mcl_core:sand", "mcl_core:dirt"})
+				for n=1, #nodes do
+					local p_pos = area:index(nodes[n].x, nodes[n].y, nodes[n].z)
+					if data[p_pos] == c_water then
+						data[p_pos] = c_nether_lava
+						lvm_used = true
+					elseif data[p_pos] == c_stone then
+						data[p_pos] = c_netherrack
+						lvm_used = true
+					elseif data[p_pos] == c_sand or data[p_pos] == c_dirt then
+						data[p_pos] = c_soul_sand
+						lvm_used = true
+					end
+				end
 			else
-				nodes = minetest.find_nodes_in_area(emin, emax, {"mcl_core:water_source"})
-			end
-			for n=1, #nodes do
-				local p_pos = area:index(nodes[n].x, nodes[n].y, nodes[n].z)
-				if data[p_pos] == c_water then
-					data[p_pos] = c_nether_lava
-					lvm_used = true
-				elseif data[p_pos] == c_stone then
-					data[p_pos] = c_netherrack
-					lvm_used = true
-				elseif data[p_pos] == c_sand or data[p_pos] == c_dirt then
-					data[p_pos] = c_soul_sand
-					lvm_used = true
+				local nodes = minetest.find_nodes_in_area(emin, emax, {"group:water"})
+				for _, n in pairs(nodes) do
+					data[area:index(n.x, n.y, n.z)] = c_nether_lava
 				end
 			end
 
@@ -2155,8 +2155,8 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 		-- * Replace water with end stone or air (depending on height).
 		-- * Remove stone, sand, dirt in v6 so our End map generator works in v6.
 		-- * Generate spawn platform (End portal destination)
-		elseif emin.y <= mcl_vars.mg_end_max and emax.y >= mcl_vars.mg_end_min then
-			local nodes, node
+		elseif minp.y <= mcl_vars.mg_end_max and maxp.y >= mcl_vars.mg_end_min then
+			local nodes
 			if mg_name == "v6" then
 				nodes = minetest.find_nodes_in_area(emin, emax, {"mcl_core:water_source", "mcl_core:stone", "mcl_core:sand", "mcl_core:dirt"})
 			else
@@ -2164,9 +2164,8 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 			end
 			if #nodes > 0 then
 				lvm_used = true
-				for n=1, #nodes do
-					node = nodes[n]
-					data[area:index(node.x, node.y, node.z)] = c_air
+				for _,n in pairs(nodes) do
+					data[area:index(n.x, n.y, n.z)] = c_air
 				end
 			end
 
@@ -2175,8 +2174,8 @@ local function basic(vm, data, data2, emin, emax, area, minp, maxp, blockseed)
 				minp.x <= mcl_vars.mg_end_platform_pos.x and maxp.x >= mcl_vars.mg_end_platform_pos.z and
 				minp.z <= mcl_vars.mg_end_platform_pos.z and maxp.z >= mcl_vars.mg_end_platform_pos.z then
 
-				local pos1 = {x = math.max(minp.x, mcl_vars.mg_end_platform_pos.x-2), y = math.max(minp.y, mcl_vars.mg_end_platform_pos.y),   z = math.max(minp.z, mcl_vars.mg_end_platform_pos.z-2)}
-				local pos2 = {x = math.min(maxp.x, mcl_vars.mg_end_platform_pos.x+2), y = math.min(maxp.y, mcl_vars.mg_end_platform_pos.y+2), z = math.min(maxp.z, mcl_vars.mg_end_platform_pos.z+2)}
+				--local pos1 = {x = math.max(minp.x, mcl_vars.mg_end_platform_pos.x-2), y = math.max(minp.y, mcl_vars.mg_end_platform_pos.y),   z = math.max(minp.z, mcl_vars.mg_end_platform_pos.z-2)}
+				--local pos2 = {x = math.min(maxp.x, mcl_vars.mg_end_platform_pos.x+2), y = math.min(maxp.y, mcl_vars.mg_end_platform_pos.y+2), z = math.min(maxp.z, mcl_vars.mg_end_platform_pos.z+2)}
 
 				for x=math.max(minp.x, mcl_vars.mg_end_platform_pos.x-2), math.min(maxp.x, mcl_vars.mg_end_platform_pos.x+2) do
 				for z=math.max(minp.z, mcl_vars.mg_end_platform_pos.z-2), math.min(maxp.z, mcl_vars.mg_end_platform_pos.z+2) do
@@ -2219,48 +2218,3 @@ end
 
 mcl_mapgen_core.register_generator("main", basic, nil, 1, true)
 
--- "Trivial" (actually NOT) function to just read the node and some stuff to not just return "ignore", like 5.3.0 does.
--- p: Position, if it's wrong, {name="error"} node will return.
--- force: optional (default: false) - Do the maximum to still read the node within us_timeout.
--- us_timeout: optional (default: 244 = 0.000244 s = 1/80/80/80), set it at least to 3000000 to let mapgen to finish its job.
---
--- returns node definition, eg. {name="air"}. Unfortunately still can return {name="ignore"}.
-function mcl_mapgen_core.get_node(p, force, us_timeout)
-	-- check initial circumstances
-	if not p or not p.x or not p.y or not p.z then return {name="error"} end
-
-	-- try common way
-	local node = minetest.get_node(p)
-	if node.name ~= "ignore" then
-		return node
-	end
-
-	-- copy table to get sure it won't changed by other threads
-	local pos = {x=p.x,y=p.y,z=p.z}
-
-	-- try LVM
-	minetest.get_voxel_manip():read_from_map(pos, pos)
-	node = minetest.get_node(pos)
-	if node.name ~= "ignore" or not force then
-		return node
-	end
-
-	-- all ways failed - need to emerge (or forceload if generated)
-	local us_timeout = us_timeout or 244
-	if mcl_mapgen_core.is_generated(pos) then
-		minetest.forceload_block(pos)
-	else
-		minetest.emerge_area(pos, pos)
-	end
-
-	local t = minetest.get_us_time()
-
-	node = minetest.get_node(pos)
-
-	while (not node or node.name == "ignore") and (minetest.get_us_time() - t < us_timeout) do
-		node = minetest.get_node(pos)
-	end
-
-	return node
-	-- it still can return "ignore", LOL, even if force = true, but only after time out
-end

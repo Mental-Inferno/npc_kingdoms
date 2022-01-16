@@ -1,6 +1,6 @@
 mcl_spawn = {}
 
-local S = minetest.get_translator("mcl_spawn")
+local S = minetest.get_translator(minetest.get_current_modname())
 local mg_name = minetest.get_mapgen_setting("mg_name")
 local storage = minetest.get_mod_storage()
 
@@ -81,13 +81,7 @@ local dir_step = storage:get_int("mcl_spawn_dir_step") or 0
 local dir_ind = storage:get_int("mcl_spawn_dir_ind") or 1
 local emerge_pos1, emerge_pos2
 
--- Get world 'mapgen_limit' and 'chunksize' to calculate 'spawn_limit'.
--- This accounts for how mapchunks are not generated if they or their shell exceed
--- 'mapgen_limit'.
-
-local mapgen_limit = tonumber(minetest.get_mapgen_setting("mapgen_limit"))
-local chunksize = tonumber(minetest.get_mapgen_setting("chunksize"))
-local spawn_limit = math.max(mapgen_limit - (chunksize + 1) * 16, 0)
+local spawn_limit = mcl_vars.mapgen_edge_max
 
 
 --Functions
@@ -385,7 +379,7 @@ function mcl_spawn.search()
 end
 
 
-mcl_spawn.get_world_spawn_pos = function()
+function mcl_spawn.get_world_spawn_pos()
 	local ssp = minetest.setting_get_pos("static_spawnpoint")
 	if ssp then
 		return ssp
@@ -401,11 +395,11 @@ end
 -- If player is nil or not a player, a world spawn point is returned.
 -- The second return value is true if returned spawn point is player-chosen,
 -- false otherwise.
-mcl_spawn.get_bed_spawn_pos = function(player)
+function mcl_spawn.get_bed_spawn_pos(player)
 	local spawn, custom_spawn = nil, false
-	if player ~= nil and player:is_player() then
+	if player and player:is_player() then
 		local attr = player:get_meta():get_string("mcl_beds:spawn")
-		if attr ~= nil and attr ~= "" then
+		if attr and attr ~= "" then
 			spawn = minetest.string_to_pos(attr)
 			custom_spawn = true
 		end
@@ -421,7 +415,7 @@ end
 -- Set pos to nil to clear the spawn position.
 -- If message is set, informs the player with a chat message when the spawn position
 -- changed.
-mcl_spawn.set_spawn_pos = function(player, pos, message)
+function mcl_spawn.set_spawn_pos(player, pos, message)
 	local spawn_changed = false
 	local meta = player:get_meta()
 	if pos == nil then
@@ -449,7 +443,7 @@ mcl_spawn.set_spawn_pos = function(player, pos, message)
 	return spawn_changed
 end
 
-mcl_spawn.get_player_spawn_pos = function(player)
+function mcl_spawn.get_player_spawn_pos(player)
 	local pos, custom_spawn = mcl_spawn.get_bed_spawn_pos(player)
 	if pos and custom_spawn then
 		-- Check if bed is still there
@@ -457,7 +451,7 @@ mcl_spawn.get_player_spawn_pos = function(player)
 		local bgroup = minetest.get_item_group(node_bed.name, "bed")
 		if bgroup ~= 1 and bgroup ~= 2 then
 			-- Bed is destroyed:
-			if player ~= nil and player:is_player() then
+			if player and player:is_player() then
 				player:get_meta():set_string("mcl_beds:spawn", "")
 			end
 			minetest.chat_send_player(player:get_player_name(), S("Your spawn bed was missing or blocked."))
@@ -488,7 +482,7 @@ mcl_spawn.get_player_spawn_pos = function(player)
 	return mcl_spawn.get_world_spawn_pos(), false
 end
 
-mcl_spawn.spawn = function(player)
+function mcl_spawn.spawn(player)
 	local pos, in_bed = mcl_spawn.get_player_spawn_pos(player)
 	player:set_pos(pos)
 	return in_bed or success
@@ -503,10 +497,19 @@ function mcl_spawn.shadow_worker()
 		mcl_spawn.search()
 		minetest.log("action", "[mcl_spawn] Started world spawn point search")
 	end
-	if success and ((not good_for_respawn(wsp)) or (not can_find_tree(wsp))) then
-		success = false
-		minetest.log("action", "[mcl_spawn] World spawn position isn't safe anymore: "..minetest.pos_to_string(wsp))
-		mcl_spawn.search()
+
+	if success then
+		local wsp_node = minetest.get_node(wsp)
+		if wsp_node and 
+		(
+			(minetest.compare_block_status and (minetest.compare_block_status(wsp, "loaded") or minetest.compare_block_status(wsp, "active")))
+			or minetest.get_node_or_nil(wsp)
+		)
+		and ((not good_for_respawn(wsp)) or ((no_trees_area_counter >= 0) and not can_find_tree(wsp))) then
+			success = false
+			minetest.log("action", "[mcl_spawn] World spawn position isn't safe anymore: "..minetest.pos_to_string(wsp))
+			mcl_spawn.search()
+		end
 	end
 
 	minetest.after(respawn_search_interval, mcl_spawn.shadow_worker)

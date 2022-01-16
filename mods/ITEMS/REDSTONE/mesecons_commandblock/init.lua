@@ -1,5 +1,12 @@
-local S = minetest.get_translator("mesecons_commandblock")
+local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
+
+local tonumber = tonumber
+
+local color_red = mcl_colors.RED
+
+local command_blocks_activated = minetest.settings:get_bool("mcl_enable_commandblocks", true)
+local msg_not_activated = S("Command blocks are not enabled on this server")
 
 local function construct(pos)
 	local meta = minetest.get_meta(pos)
@@ -22,7 +29,7 @@ local function resolve_commands(commands, pos)
 	local commander = meta:get_string("commander")
 
 	-- A non-printable character used while replacing “@@”.
-	local SUBSTITUTE_CHARACTER = '\26' -- ASCII SUB
+	local SUBSTITUTE_CHARACTER = "\26" -- ASCII SUB
 
 	-- No players online: remove all commands containing
 	-- problematic placeholders.
@@ -67,7 +74,7 @@ end
 local function check_commands(commands, player_name)
 	for _, command in pairs(commands:split("\n")) do
 		local pos = command:find(" ")
-		local cmd, param = command, ""
+		local cmd = command
 		if pos then
 			cmd = command:sub(1, pos - 1)
 		end
@@ -78,7 +85,7 @@ local function check_commands(commands, player_name)
 			if string.sub(cmd, 1, 1) == "/" then
 				msg = S("Error: The command “@1” does not exist; your command block has not been changed. Use the “help” chat command for a list of available commands. Hint: Try to remove the leading slash.", cmd)
 			end
-			return false, minetest.colorize("#FF0000", msg)
+			return false, minetest.colorize(color_red, msg)
 		end
 		if player_name then
 			local player_privs = minetest.get_player_privs(player_name)
@@ -86,7 +93,7 @@ local function check_commands(commands, player_name)
 			for cmd_priv, _ in pairs(cmddef.privs) do
 				if player_privs[cmd_priv] ~= true then
 					local msg = S("Error: You have insufficient privileges to use the command “@1” (missing privilege: @2)! The command block has not been changed.", cmd, cmd_priv)
-					return false, minetest.colorize("#FF0000", msg)
+					return false, minetest.colorize(color_red, msg)
 				end
 			end
 		end
@@ -99,9 +106,14 @@ local function commandblock_action_on(pos, node)
 		return
 	end
 
-	minetest.swap_node(pos, {name = "mesecons_commandblock:commandblock_on"})
-
 	local meta = minetest.get_meta(pos)
+	local commander = meta:get_string("commander")
+
+	if not command_blocks_activated then
+		--minetest.chat_send_player(commander, msg_not_activated)
+		return
+	end
+	minetest.swap_node(pos, {name = "mesecons_commandblock:commandblock_on"})
 
 	local commands = resolve_commands(meta:get_string("commands"), pos)
 	for _, command in pairs(commands:split("\n")) do
@@ -117,7 +129,6 @@ local function commandblock_action_on(pos, node)
 			return
 		end
 		-- Execute command in the name of commander
-		local commander = meta:get_string("commander")
 		cmddef.func(commander, param)
 	end
 end
@@ -128,7 +139,11 @@ local function commandblock_action_off(pos, node)
 	end
 end
 
-local on_rightclick = function(pos, node, player, itemstack, pointed_thing)
+local function on_rightclick(pos, node, player, itemstack, pointed_thing)
+	if not command_blocks_activated then
+		minetest.chat_send_player(player:get_player_name(), msg_not_activated)
+		return
+	end
 	local can_edit = true
 	-- Only allow write access in Creative Mode
 	if not minetest.is_creative_enabled(player:get_player_name()) then
@@ -179,18 +194,18 @@ local on_rightclick = function(pos, node, player, itemstack, pointed_thing)
 	minetest.show_formspec(pname, "commandblock_"..pos.x.."_"..pos.y.."_"..pos.z, formspec)
 end
 
-local on_place = function(itemstack, placer, pointed_thing)
+local function on_place(itemstack, placer, pointed_thing)
 	if pointed_thing.type ~= "node" then
 		return itemstack
 	end
 
 	-- Use pointed node's on_rightclick function first, if present
-	local node = minetest.get_node(pointed_thing.under)
-	if placer and not placer:get_player_control().sneak then
-		if minetest.registered_nodes[node.name] and minetest.registered_nodes[node.name].on_rightclick then
-			return minetest.registered_nodes[node.name].on_rightclick(pointed_thing.under, node, placer, itemstack) or itemstack
-		end
-	end
+    local new_stack = mcl_util.call_on_rightclick(itemstack, placer, pointed_thing)
+    if new_stack then
+        return new_stack
+    end
+
+	--local node = minetest.get_node(pointed_thing.under)
 
 	local privs = minetest.get_player_privs(placer:get_player_name())
 	if not privs.maphack then
@@ -282,8 +297,8 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		end
 
 		local index, _, x, y, z = string.find(formname, "commandblock_(-?%d+)_(-?%d+)_(-?%d+)")
-		if index ~= nil and x ~= nil and y ~= nil and z ~= nil then
-			local pos = {x=tonumber(x), y=tonumber(y), z=tonumber(z)}
+		if index and x and y and z then
+			local pos = {x = tonumber(x), y = tonumber(y), z = tonumber(z)}
 			local meta = minetest.get_meta(pos)
 			if not minetest.is_creative_enabled(player:get_player_name()) then
 				minetest.chat_send_player(player:get_player_name(), S("Editing the command block has failed! You can only change the command block in Creative Mode!"))

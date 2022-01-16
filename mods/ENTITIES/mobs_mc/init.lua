@@ -3,7 +3,7 @@
 --made for MC like Survival game
 --License for code WTFPL and otherwise stated in readmes
 
-local path = minetest.get_modpath("mobs_mc")
+local path = minetest.get_modpath(minetest.get_current_modname())
 
 if not minetest.get_modpath("mobs_mc_gameconfig") then
 	mobs_mc = {}
@@ -37,7 +37,6 @@ dofile(path .. "/3_shared.lua")
 
 --Mob heads
 dofile(path .. "/4_heads.lua")
-
 dofile(path .. "/5_spawn_abm_check.lua")
 
 -- Animals
@@ -55,40 +54,25 @@ dofile(path .. "/sheep.lua") -- Mesh and animation by Pavel_S
 dofile(path .. "/wolf.lua") -- KrupnoPavel
 dofile(path .. "/squid.lua") -- Animation, sound and egg texture by daufinsyd
 
--- NPCs
-dofile(path .. "/villager.lua") -- KrupnoPavel Mesh and animation by toby109tt  / https://github.com/22i
--- Agent texture missing
---dofile(path .. "/agent.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-
--- Illagers and witch
-dofile(path .. "/villager_evoker.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/villager_vindicator.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/villager_zombie.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-
-dofile(path .. "/witch.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-
---Monsters
-dofile(path .. "/blaze.lua") -- Animation by daufinsyd
+-- Hostile Animals
 dofile(path .. "/creeper.lua") -- Mesh by Morn76 Animation by Pavel_S
-dofile(path .. "/ender_dragon.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/enderman.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/endermite.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/villager_illusioner.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/ghast.lua") -- maikerumine
 dofile(path .. "/guardian.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
 dofile(path .. "/guardian_elder.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/snowman.lua")
-dofile(path .. "/iron_golem.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/shulker.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/silverfish.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
-dofile(path .. "/skeleton+stray.lua") -- Mesh by Morn76 Animation by Pavel_S
-dofile(path .. "/skeleton_wither.lua") -- Mesh by Morn76 Animation by Pavel_S
-dofile(path .. "/zombie.lua") -- Mesh by Morn76 Animation by Pavel_S
-dofile(path .. "/zombiepig.lua") -- Mesh by Morn76 Animation by Pavel_S
+dofile(path .. "/crawler.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
 dofile(path .. "/slime+magma_cube.lua") -- Wuzzy
 dofile(path .. "/spider.lua") -- Spider by AspireMint (fishyWET (CC-BY-SA 3.0 license for texture)
-dofile(path .. "/vex.lua") -- KrupnoPavel
-dofile(path .. "/wither.lua") -- Mesh and animation by toby109tt  / https://github.com/22i
+
+-- NPCs
+dofile(path .. "/villager.lua") -- KrupnoPavel Mesh and animation by toby109tt  / https://github.com/22i
+
+-- Hostile NPCs
+dofile(path .. "/snowman.lua")
+dofile(path .. "/iron_golem.lua") -- maikerumine Mesh and animation by toby109tt  / https://github.com/22i
+
+-- Robots
+
+-- Hostile Robots
+
 --NOTES:
 --
 --[[

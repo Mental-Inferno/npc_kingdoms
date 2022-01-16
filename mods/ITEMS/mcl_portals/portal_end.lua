@@ -1,17 +1,18 @@
-local S = minetest.get_translator("mcl_portals")
+local S = minetest.get_translator(minetest.get_current_modname())
+
+local table = table
+local vector = vector
+local math = math
+
+local has_doc = minetest.get_modpath("doc")
 
 -- Parameters
-local SPAWN_MIN = mcl_vars.mg_end_min+70
-local SPAWN_MAX = mcl_vars.mg_end_min+98
+--local SPAWN_MIN = mcl_vars.mg_end_min+70
+--local SPAWN_MAX = mcl_vars.mg_end_min+98
 
-local PORTAL_ALPHA = 192
-if minetest.features.use_texture_alpha_string_modes then
-	PORTAL_ALPHA = nil
-end
+--local mg_name = minetest.get_mapgen_setting("mg_name")
 
-local mg_name = minetest.get_mapgen_setting("mg_name")
-
-local destroy_portal = function(pos)
+local function destroy_portal(pos)
 	local neighbors = {
 		{ x=1, y=0, z=0 },
 		{ x=-1, y=0, z=0 },
@@ -81,7 +82,6 @@ minetest.register_node("mcl_portals:portal_end", {
 	-- This is 15 in MC.
 	light_source = 14,
 	post_effect_color = {a = 192, r = 0, g = 0, b = 0},
-	alpha = PORTAL_ALPHA,
 	after_destruct = destroy_portal,
 	-- This prevents “falling through”
 	collision_box = {
@@ -202,7 +202,6 @@ function mcl_portals.end_teleport(obj, pos)
 			end
 		end
 
-		local platform
 		build_end_portal_destination(platform_pos)
 		check_and_build_end_portal_destination(platform_pos)
 
@@ -217,6 +216,9 @@ function mcl_portals.end_teleport(obj, pos)
 		-- Look towards the main End island
 		if dim ~= "end" then
 			obj:set_look_horizontal(math.pi/2)
+		-- Show credits
+		else
+			mcl_credits.show(obj)
 		end
 		mcl_worlds.dimension_change(obj, mcl_worlds.pos_to_dimension(target))
 		minetest.sound_play("mcl_portals_teleport", {pos=target, gain=0.5, max_hear_distance = 16}, true)
@@ -224,7 +226,7 @@ function mcl_portals.end_teleport(obj, pos)
 end
 
 function mcl_portals.end_portal_teleport(pos, node)
-	for _,obj in ipairs(minetest.get_objects_inside_radius(pos, 1)) do
+	for _,obj in pairs(minetest.get_objects_inside_radius(pos, 1)) do
 		local lua_entity = obj:get_luaentity() --maikerumine added for objects to travel
 		if obj:is_player() or lua_entity then
 			local objpos = obj:get_pos()
@@ -307,7 +309,7 @@ minetest.register_node("mcl_portals:end_portal_frame_eye", {
 	description = S("End Portal Frame with Eye of Ender"),
 	_tt_help = S("Used to construct end portals"),
 	_doc_items_create_entry = false,
-	groups = { creative_breakable = 1, deco_block = 1, comparator_signal = 15, end_portal_frame = 2 },
+	groups = { creative_breakable = 1, deco_block = 1, comparator_signal = 15, end_portal_frame = 2, not_in_creative_inventory = 1 },
 	tiles = { "mcl_portals_endframe_top.png^[lowpart:75:mcl_portals_endframe_eye.png", "mcl_portals_endframe_bottom.png", "mcl_portals_endframe_eye.png^mcl_portals_endframe_side.png" },
 	use_texture_alpha = minetest.features.use_texture_alpha_string_modes and "opaque" or false,
 	paramtype2 = "facedir",
@@ -339,7 +341,7 @@ minetest.register_node("mcl_portals:end_portal_frame_eye", {
 	_mcl_hardness = -1,
 })
 
-if minetest.get_modpath("doc") then
+if has_doc then
 	doc.add_entry_alias("nodes", "mcl_portals:end_portal_frame", "nodes", "mcl_portals:end_portal_frame_eye")
 end
 
@@ -366,7 +368,7 @@ minetest.override_item("mcl_end:ender_eye", {
 			end
 			minetest.set_node(pointed_thing.under, { name = "mcl_portals:end_portal_frame_eye", param2 = node.param2 })
 
-			if minetest.get_modpath("doc") then
+			if has_doc then
 				doc.mark_entry_as_revealed(user:get_player_name(), "nodes", "mcl_portals:end_portal_frame")
 			end
 			minetest.sound_play(
@@ -381,7 +383,7 @@ minetest.override_item("mcl_end:ender_eye", {
 				-- Epic 'portal open' sound effect that can be heard everywhere
 				minetest.sound_play("mcl_portals_open_end_portal", {gain=0.8}, true)
 				end_portal_area(ppos)
-				if minetest.get_modpath("doc") then
+				if has_doc then
 					doc.mark_entry_as_revealed(user:get_player_name(), "nodes", "mcl_portals:portal_end")
 				end
 			end
@@ -389,7 +391,3 @@ minetest.override_item("mcl_end:ender_eye", {
 		return itemstack
 	end,
 })
-minetest.override_item("mcl_core:bedrock", {
-	after_destruct = destroy_portal,
-})
-

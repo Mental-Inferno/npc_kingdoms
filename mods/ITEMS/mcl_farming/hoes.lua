@@ -1,4 +1,4 @@
-local S = minetest.get_translator("mcl_farming")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 local function create_soil(pos, inv)
 	if pos == nil then
@@ -55,6 +55,7 @@ local uses = {
 	iron = 251,
 	gold = 33,
 	diamond = 1562,
+	netherite = 2031,
 }
 
 local hoe_tt = S("Turns block into farmland")
@@ -68,7 +69,7 @@ minetest.register_tool("mcl_farming:hoe_wood", {
 	_doc_items_usagehelp = hoe_usagehelp,
 	_doc_items_hidden = false,
 	inventory_image = "farming_tool_woodhoe.png",
-	wield_scale = { x = 1.8, y = 1.8, z = 1 },
+	wield_scale = mcl_vars.tool_wield_scale,
 	on_place = hoe_on_place_function(uses.wood),
 	groups = { tool=1, hoe=1, enchantability=15 },
 	tool_capabilities = {
@@ -78,6 +79,9 @@ minetest.register_tool("mcl_farming:hoe_wood", {
 	},
 	_repair_material = "group:wood",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		hoey = { speed = 2, level = 1, uses = 60 }
+	},
 })
 
 minetest.register_craft({
@@ -108,7 +112,7 @@ minetest.register_tool("mcl_farming:hoe_stone", {
 	_doc_items_longdesc = hoe_longdesc,
 	_doc_items_usagehelp = hoe_usagehelp,
 	inventory_image = "farming_tool_stonehoe.png",
-	wield_scale = { x = 1.8, y = 1.8, z = 1 },
+	wield_scale = mcl_vars.tool_wield_scale,
 	on_place = hoe_on_place_function(uses.stone),
 	groups = { tool=1, hoe=1, enchantability=5 },
 	tool_capabilities = {
@@ -118,6 +122,9 @@ minetest.register_tool("mcl_farming:hoe_stone", {
 	},
 	_repair_material = "mcl_core:cobble",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		hoey = { speed = 4, level = 3, uses = 132 }
+	},
 })
 
 minetest.register_craft({
@@ -143,7 +150,7 @@ minetest.register_tool("mcl_farming:hoe_iron", {
 	_doc_items_longdesc = hoe_longdesc,
 	_doc_items_usagehelp = hoe_usagehelp,
 	inventory_image = "farming_tool_steelhoe.png",
-	wield_scale = { x = 1.8, y = 1.8, z = 1 },
+	wield_scale = mcl_vars.tool_wield_scale,
 	on_place = hoe_on_place_function(uses.iron),
 	groups = { tool=1, hoe=1, enchantability=14 },
 	tool_capabilities = {
@@ -154,6 +161,9 @@ minetest.register_tool("mcl_farming:hoe_iron", {
 	},
 	_repair_material = "mcl_core:iron_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		hoey = { speed = 6, level = 4, uses = 251 }
+	},
 })
 
 minetest.register_craft({
@@ -186,7 +196,7 @@ minetest.register_tool("mcl_farming:hoe_gold", {
 	_doc_items_longdesc = hoe_longdesc,
 	_doc_items_usagehelp = hoe_usagehelp,
 	inventory_image = "farming_tool_goldhoe.png",
-	wield_scale = { x = 1.8, y = 1.8, z = 1 },
+	wield_scale = mcl_vars.tool_wield_scale,
 	on_place = hoe_on_place_function(uses.gold),
 	groups = { tool=1, hoe=1, enchantability=22 },
 	tool_capabilities = {
@@ -196,6 +206,9 @@ minetest.register_tool("mcl_farming:hoe_gold", {
 	},
 	_repair_material = "mcl_core:gold_ingot",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		hoey = { speed = 12, level = 2, uses = 33 }
+	},
 })
 
 minetest.register_craft({
@@ -230,7 +243,7 @@ minetest.register_tool("mcl_farming:hoe_diamond", {
 	_doc_items_longdesc = hoe_longdesc,
 	_doc_items_usagehelp = hoe_usagehelp,
 	inventory_image = "farming_tool_diamondhoe.png",
-	wield_scale = { x = 1.8, y = 1.8, z = 1 },
+	wield_scale = mcl_vars.tool_wield_scale,
 	on_place = hoe_on_place_function(uses.diamond),
 	groups = { tool=1, hoe=1, enchantability=10 },
 	tool_capabilities = {
@@ -240,6 +253,11 @@ minetest.register_tool("mcl_farming:hoe_diamond", {
 	},
 	_repair_material = "mcl_core:diamond",
 	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		hoey = { speed = 8, level = 5, uses = 1562 }
+	},
+	_mcl_upgradable = true,
+	_mcl_upgrade_item = "mcl_farming:hoe_netherite"
 })
 
 minetest.register_craft({
@@ -257,4 +275,25 @@ minetest.register_craft({
 		{"mcl_core:stick", ""},
 		{"mcl_core:stick", ""}
 	}
+})
+
+minetest.register_tool("mcl_farming:hoe_netherite", {
+	description = S("Netherite Hoe"),
+	_tt_help = hoe_tt.."\n"..S("Uses: @1", uses.netherite),
+	_doc_items_longdesc = hoe_longdesc,
+	_doc_items_usagehelp = hoe_usagehelp,
+	inventory_image = "farming_tool_netheritehoe.png",
+	wield_scale = mcl_vars.tool_wield_scale,
+	on_place = hoe_on_place_function(uses.netherite),
+	groups = { tool=1, hoe=1, enchantability=10 },
+	tool_capabilities = {
+		full_punch_interval = 0.25,
+		damage_groups = { fleshy = 4, },
+		punch_attack_uses = uses.netherite,
+	},
+	_repair_material = "mcl_nether:netherite_ingot",
+	_mcl_toollike_wield = true,
+	_mcl_diggroups = {
+		hoey = { speed = 8, level = 5, uses = uses.netherite }
+	},
 })

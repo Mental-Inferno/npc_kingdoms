@@ -7,10 +7,10 @@
 All node definitions share a lot of code, so this is the reason why there
 are so many weird tables below.
 ]]
-local S = minetest.get_translator("mcl_dispensers")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 -- For after_place_node
-local setup_dispenser = function(pos)
+local function setup_dispenser(pos)
 	-- Set formspec and inventory
 	local form = "size[9,8.75]"..
 	"label[0,4.0;"..minetest.formspec_escape(minetest.colorize("#313131", S("Inventory"))).."]"..
@@ -19,9 +19,9 @@ local setup_dispenser = function(pos)
 	"list[current_player;main;0,7.74;9,1;]"..
 	mcl_formspec.get_itemslot_bg(0,7.74,9,1)..
 	"label[3,0;"..minetest.formspec_escape(minetest.colorize("#313131", S("Dispenser"))).."]"..
-	"list[current_name;main;3,0.5;3,3;]"..
+	"list[context;main;3,0.5;3,3;]"..
 	mcl_formspec.get_itemslot_bg(3,0.5,3,3)..
-	"listring[current_name;main]"..
+	"listring[context;main]"..
 	"listring[current_player;main]"
 	local meta = minetest.get_meta(pos)
 	meta:set_string("formspec", form)
@@ -29,7 +29,7 @@ local setup_dispenser = function(pos)
 	inv:set_size("main", 9)
 end
 
-local orientate_dispenser = function(pos, placer)
+local function orientate_dispenser(pos, placer)
 	-- Not placed by player
 	if not placer then return end
 
@@ -82,7 +82,7 @@ local dispenserdef = {
 	end,
 	after_dig_node = function(pos, oldnode, oldmetadata, digger)
 		local meta = minetest.get_meta(pos)
-		local meta2 = meta
+		local meta2 = meta:to_table()
 		meta:from_table(oldmetadata)
 		local inv = meta:get_inventory()
 		for i=1, inv:get_size("main") do
@@ -92,191 +92,186 @@ local dispenserdef = {
 				minetest.add_item(p, stack)
 			end
 		end
-		meta:from_table(meta2:to_table())
+		meta:from_table(meta2)
 	end,
 	_mcl_blast_resistance = 3.5,
 	_mcl_hardness = 3.5,
-	mesecons = {effector = {
-		-- Dispense random item when triggered
-		action_on = function (pos, node)
-			local meta = minetest.get_meta(pos)
-			local inv = meta:get_inventory()
-			local droppos, dropdir
-			if node.name == "mcl_dispensers:dispenser" then
-				dropdir = vector.multiply(minetest.facedir_to_dir(node.param2), -1)
-				droppos = vector.add(pos, dropdir)
-			elseif node.name == "mcl_dispensers:dispenser_up" then
-				dropdir = {x=0, y=1, z=0}
-				droppos  = {x=pos.x, y=pos.y+1, z=pos.z}
-			elseif node.name == "mcl_dispensers:dispenser_down" then
-				dropdir = {x=0, y=-1, z=0}
-				droppos  = {x=pos.x, y=pos.y-1, z=pos.z}
-			end
-			local dropnode = minetest.get_node(droppos)
-			local dropnodedef = minetest.registered_nodes[dropnode.name]
-			local stacks = {}
-			for i=1,inv:get_size("main") do
-				local stack = inv:get_stack("main", i)
-				if not stack:is_empty() then
-					table.insert(stacks, {stack = stack, stackpos = i})
+	mesecons = {
+		effector = {
+			-- Dispense random item when triggered
+			action_on = function(pos, node)
+				local meta = minetest.get_meta(pos)
+				local inv = meta:get_inventory()
+				local droppos, dropdir
+				if node.name == "mcl_dispensers:dispenser" then
+					dropdir = vector.multiply(minetest.facedir_to_dir(node.param2), -1)
+					droppos = vector.add(pos, dropdir)
+				elseif node.name == "mcl_dispensers:dispenser_up" then
+					dropdir = {x=0, y=1, z=0}
+					droppos  = {x=pos.x, y=pos.y+1, z=pos.z}
+				elseif node.name == "mcl_dispensers:dispenser_down" then
+					dropdir = {x=0, y=-1, z=0}
+					droppos  = {x=pos.x, y=pos.y-1, z=pos.z}
 				end
-			end
-			if #stacks >= 1 then
-				local r = math.random(1, #stacks)
-				local stack = stacks[r].stack
-				local dropitem = ItemStack(stack)
-				dropitem:set_count(1)
-				local stack_id = stacks[r].stackpos
-				local stackdef = stack:get_definition()
-				local iname = stack:get_name()
-				local igroups = minetest.registered_items[iname].groups
-
-				--[===[ Dispense item ]===]
-
-				-- Hardcoded dispensions --
-
-				-- Armor, mob heads and pumpkins
-				if igroups.armor_head or igroups.armor_torso or igroups.armor_legs or igroups.armor_feet then
-					local armor_type, armor_slot
-					local armor_dispensed = false
-					if igroups.armor_head then
-						armor_type = "armor_head"
-						armor_slot = 2
-					elseif igroups.armor_torso then
-						armor_type = "armor_torso"
-						armor_slot = 3
-					elseif igroups.armor_legs then
-						armor_type = "armor_legs"
-						armor_slot = 4
-					elseif igroups.armor_feet then
-						armor_type = "armor_feet"
-						armor_slot = 5
+				local dropnode = minetest.get_node(droppos)
+				local dropnodedef = minetest.registered_nodes[dropnode.name]
+				local stacks = {}
+				for i=1,inv:get_size("main") do
+					local stack = inv:get_stack("main", i)
+					if not stack:is_empty() then
+						table.insert(stacks, {stack = stack, stackpos = i})
 					end
+				end
+				if #stacks >= 1 then
+					local r = math.random(1, #stacks)
+					local stack = stacks[r].stack
+					local dropitem = ItemStack(stack)
+					dropitem:set_count(1)
+					local stack_id = stacks[r].stackpos
+					local stackdef = stack:get_definition()
 
-					local droppos_below = {x=droppos.x, y=droppos.y-1, z=droppos.z}
-					local dropnode_below = minetest.get_node(droppos_below)
-					-- Put armor on player or armor stand
-					local standpos
-					if dropnode.name == "mcl_armor_stand:armor_stand" then
-						standpos = droppos
-					elseif dropnode_below.name == "mcl_armor_stand:armor_stand" then
-						standpos = droppos_below
+					if not stackdef then
+						return
 					end
-					if standpos then
-						local dropmeta = minetest.get_meta(standpos)
-						local dropinv = dropmeta:get_inventory()
-						if dropinv:room_for_item(armor_type, dropitem) then
-							dropinv:add_item(armor_type, dropitem)
-							minetest.registered_nodes["mcl_armor_stand:armor_stand"].on_metadata_inventory_put(standpos)
-							stack:take_item()
-							inv:set_stack("main", stack_id, stack)
-							armor:play_equip_sound(dropitem, nil, standpos)
-							armor_dispensed = true
-						end
-					else
-						-- Put armor on nearby player
-						-- First search for player in front of dispenser (check 2 nodes)
-						local objs1 = minetest.get_objects_inside_radius(droppos, 1)
-						local objs2 = minetest.get_objects_inside_radius(droppos_below, 1)
-						local objs_table = {objs1, objs2}
-						local player
-						for oi=1, #objs_table do
-							local objs_inner = objs_table[oi]
-							for o=1, #objs_inner do
-								--[[ First player in list is the lucky one. The other player get nothing :-(
-								If multiple players are close to the dispenser, it can be a bit
-								-- unpredictable on who gets the armor. ]]
-								if objs_inner[o]:is_player() then
-									player = objs_inner[o]
+					
+					local iname = stack:get_name()
+					local igroups = stackdef.groups
+
+					--[===[ Dispense item ]===]
+
+					-- Hardcoded dispensions --
+
+					-- Armor, mob heads and pumpkins
+					if igroups.armor then
+						local droppos_below = {x = droppos.x, y = droppos.y - 1, z = droppos.z}
+
+						for _, objs in ipairs({minetest.get_objects_inside_radius(droppos, 1), minetest.get_objects_inside_radius(droppos_below, 1)}) do
+							for _, obj in ipairs(objs) do
+								stack = mcl_armor.equip(stack, obj)
+								if stack:is_empty() then
 									break
 								end
 							end
-							if player then
+							if stack:is_empty() then
 								break
 							end
 						end
-						-- If player found, add armor
-						if player then
-							local ainv = minetest.get_inventory({type="detached", name=player:get_player_name().."_armor"})
-							local pinv = player:get_inventory()
-							if ainv:get_stack("armor", armor_slot):is_empty() and pinv:get_stack("armor", armor_slot):is_empty() then
-								ainv:set_stack("armor", armor_slot, dropitem)
-								pinv:set_stack("armor", armor_slot, dropitem)
-								armor:set_player_armor(player)
-								armor:update_inventory(player)
-								armor:play_equip_sound(dropitem, player)
 
-								stack:take_item()
-								inv:set_stack("main", stack_id, stack)
-								armor_dispensed = true
-							end
-						end
-
-						-- Place head or pumpkin as node, if equipping it as armor has failed
-						if not armor_dispensed then
+							-- Place head or pumpkin as node, if equipping it as armor has failed
+						if not stack:is_empty() then
 							if igroups.head or iname == "mcl_farming:pumpkin_face" then
 								if dropnodedef.buildable_to then
 									minetest.set_node(droppos, {name = iname, param2 = node.param2})
 									stack:take_item()
-									inv:set_stack("main", stack_id, stack)
 								end
 							end
 						end
-					end
 
-				-- Spawn Egg
-				elseif igroups.spawn_egg then
-					-- Spawn mob
-					if not dropnodedef.walkable then
-						pointed_thing = { above = droppos, under = { x=droppos.x, y=droppos.y-1, z=droppos.z } }
-						minetest.add_entity(droppos, stack:get_name())
-
-						stack:take_item()
 						inv:set_stack("main", stack_id, stack)
-					end
 
-				-- Generalized dispension
-				elseif (not dropnodedef.walkable or stackdef._dispense_into_walkable) then
-					--[[ _on_dispense(stack, pos, droppos, dropnode, dropdir)
-						* stack: Itemstack which is dispense
-						* pos: Position of dispenser
-						* droppos: Position to which to dispense item
-						* dropnode: Node of droppos
-						* dropdir: Drop direction
-
-					_dispense_into_walkable: If true, can dispense into walkable nodes
-					]]
-					if stackdef._on_dispense then
-						-- Item-specific dispension (if defined)
-						local od_ret = stackdef._on_dispense(dropitem, pos, droppos, dropnode, dropdir)
-						if od_ret then
-							local newcount = stack:get_count() - 1
-							stack:set_count(newcount)
-							inv:set_stack("main", stack_id, stack)
-							if newcount == 0 then
-								inv:set_stack("main", stack_id, od_ret)
-							elseif inv:room_for_item("main", od_ret) then
-								inv:add_item("main", od_ret)
-							else
-								minetest.add_item(droppos, dropitem)
+					-- Use shears on sheeps
+					elseif igroups.shears then
+						for _, obj in pairs(minetest.get_objects_inside_radius(droppos, 1)) do
+							local entity = obj:get_luaentity()
+							if entity and not entity.child and not entity.gotten then
+								local entname = entity.name
+								local pos = obj:get_pos()
+								local used, texture = false
+								if entname == "mobs_mc:sheep" then
+									minetest.add_item(pos, entity.drops[2].name .. " " .. math.random(1, 3))
+									if not entity.color then
+										entity.color = "unicolor_white"
+									end
+									entity.base_texture = { "blank.png", "mobs_mc_sheep.png" }
+									texture = entity.base_texture
+									entity.drops = {
+										{ name = mobs_mc.items.mutton_raw, chance = 1, min = 1, max = 2 },
+									}
+									used = true
+								elseif entname == "mobs_mc:snowman" then
+									texture = {
+										"mobs_mc_snowman.png",
+										"blank.png", "blank.png",
+										"blank.png", "blank.png",
+										"blank.png", "blank.png",
+									}
+									used = true
+								elseif entname == "mobs_mc:mooshroom" then
+									local droppos = vector.offset(pos, 0, 1.4, 0)
+									if entity.base_texture[1] == "mobs_mc_mooshroom_brown.png" then
+										minetest.add_item(droppos, mobs_mc.items.mushroom_brown .. " 5")
+									else
+										minetest.add_item(droppos, mobs_mc.items.mushroom_red .. " 5")
+									end
+									obj = mcl_util.replace_mob(obj, "mobs_mc:cow")
+									entity = obj:get_luaentity()
+									used = true
+								end
+								if used then
+									obj:set_properties({ textures = texture })
+									entity.gotten = true
+									minetest.sound_play("mcl_tools_shears_cut", { pos = pos }, true)
+									stack:add_wear(65535 / stackdef._mcl_diggroups.shearsy.uses)
+									inv:set_stack("main", stack_id, stack)
+									break
+								end
 							end
-						else
+						end
+
+					-- Spawn Egg
+					elseif igroups.spawn_egg then
+						-- Spawn mob
+						if not dropnodedef.walkable then
+							--pointed_thing = { above = droppos, under = { x=droppos.x, y=droppos.y-1, z=droppos.z } }
+							minetest.add_entity(droppos, stack:get_name())
+
 							stack:take_item()
 							inv:set_stack("main", stack_id, stack)
 						end
-					else
-						-- Drop item otherwise
-						minetest.add_item(droppos, dropitem)
-						stack:take_item()
-						inv:set_stack("main", stack_id, stack)
+
+					-- Generalized dispension
+					elseif (not dropnodedef.walkable or stackdef._dispense_into_walkable) then
+						--[[ _on_dispense(stack, pos, droppos, dropnode, dropdir)
+							* stack: Itemstack which is dispense
+							* pos: Position of dispenser
+							* droppos: Position to which to dispense item
+							* dropnode: Node of droppos
+							* dropdir: Drop direction
+
+						_dispense_into_walkable: If true, can dispense into walkable nodes
+						]]
+						if stackdef._on_dispense then
+							-- Item-specific dispension (if defined)
+							local od_ret = stackdef._on_dispense(dropitem, pos, droppos, dropnode, dropdir)
+							if od_ret then
+								local newcount = stack:get_count() - 1
+								stack:set_count(newcount)
+								inv:set_stack("main", stack_id, stack)
+								if newcount == 0 then
+									inv:set_stack("main", stack_id, od_ret)
+								elseif inv:room_for_item("main", od_ret) then
+									inv:add_item("main", od_ret)
+								else
+									minetest.add_item(droppos, dropitem)
+								end
+							else
+								stack:take_item()
+								inv:set_stack("main", stack_id, stack)
+							end
+						else
+							-- Drop item otherwise
+							minetest.add_item(droppos, dropitem)
+							stack:take_item()
+							inv:set_stack("main", stack_id, stack)
+						end
 					end
+
+
 				end
-
-
-			end
-		end,
-		rules = mesecon.rules.alldirs,
-	}},
+			end,
+			rules = mesecon.rules.alldirs,
+		},
+	},
 	on_rotate = on_rotate,
 }
 
@@ -306,10 +301,11 @@ S("• Flint and steel: Is used to ignite a fire in air and to ignite TNT").."\n
 S("• Spawn eggs: Will summon the mob they contain").."\n"..
 S("• Other items: Are simply dropped")
 
-horizontal_def.after_place_node = function(pos, placer, itemstack, pointed_thing)
+function horizontal_def.after_place_node(pos, placer, itemstack, pointed_thing)
 	setup_dispenser(pos)
 	orientate_dispenser(pos, placer)
 end
+
 horizontal_def.tiles = {
 	"default_furnace_top.png", "default_furnace_bottom.png",
 	"default_furnace_side.png", "default_furnace_side.png",
@@ -347,7 +343,7 @@ minetest.register_node("mcl_dispensers:dispenser_up", up_def)
 
 
 minetest.register_craft({
-	output = 'mcl_dispensers:dispenser',
+	output = "mcl_dispensers:dispenser",
 	recipe = {
 		{"mcl_core:cobble", "mcl_core:cobble", "mcl_core:cobble",},
 		{"mcl_core:cobble", "mcl_bows:bow", "mcl_core:cobble",},

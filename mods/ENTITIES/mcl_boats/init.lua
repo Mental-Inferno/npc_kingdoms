@@ -1,6 +1,6 @@
-local S = minetest.get_translator("mcl_boats")
+local S = minetest.get_translator(minetest.get_current_modname())
 
-local boat_visual_size = {x = 3, y = 3, z = 3}
+local boat_visual_size = {x = 1, y = 1, z = 1}
 local paddling_speed = 22
 local boat_y_offset = 0.35
 local boat_y_offset_ground = boat_y_offset + 0.6
@@ -12,9 +12,7 @@ local function is_group(pos, group)
 	return minetest.get_item_group(nn, group) ~= 0
 end
 
-local function is_water(pos)
-	return is_group(pos, "water")
-end
+local is_water = flowlib.is_water
 
 local function is_ice(pos)
 	return is_group(pos, "ice")
@@ -43,7 +41,18 @@ local function check_object(obj)
 end
 
 local function get_visual_size(obj)
-	return obj:is_player() and {x = 1, y = 1, z = 1} or obj:get_luaentity()._old_visual_size or obj:get_properties().visual_size
+	if not obj or obj:is_player() then
+		return boat_visual_size
+	end
+	local luaentity = obj:get_luaentity()
+	if luaentity then
+		if luaentity._old_visual_size then
+			return luaentity._old_visual_size
+		else
+			return boat_visual_size
+		end
+	end
+	return obj:get_properties().visual_size
 end
 
 local function set_attach(boat)
@@ -86,7 +95,7 @@ local function attach_object(self, obj)
 			end
 		end, name)
 		obj:set_look_horizontal(yaw)
-		mcl_tmp_message.message(obj, S("Sneak to dismount"))
+		mcl_title.set(obj, "actionbar", {text=S("Sneak to dismount"), color="white", stay=60})
 	else
 		obj:get_luaentity()._old_visual_size = visual_size
 	end
@@ -117,7 +126,7 @@ local boat = {
 	collisionbox = {-0.5, -0.35, -0.5, 0.5, 0.3, 0.5},
 	visual = "mesh",
 	mesh = "mcl_boats_boat.b3d",
-	textures = {"mcl_boats_texture_oak_boat.png"},
+	textures = {"mcl_boats_texture_oak_boat.png", "mcl_boats_texture_oak_boat.png", "mcl_boats_texture_oak_boat.png", "mcl_boats_texture_oak_boat.png", "mcl_boats_texture_oak_boat.png"},
 	visual_size = boat_visual_size,
 	hp_max = boat_max_hp,
 	damage_texture_modifier = "^[colorize:white:0",
@@ -150,6 +159,11 @@ function boat.on_activate(self, staticdata, dtime_s)
 		self._v = data.v
 		self._last_v = self._v
 		self._itemstring = data.itemstring
+
+		while #data.textures < 5 do
+			table.insert(data.textures, data.textures[1])
+		end
+
 		self.object:set_properties({textures = data.textures})
 	end
 end
@@ -163,6 +177,8 @@ function boat.get_staticdata(self)
 end
 
 function boat.on_death(self, killer)
+	mcl_burning.extinguish(self.object)
+
 	if killer and killer:is_player() and minetest.is_creative_enabled(killer:get_player_name()) then
 		local inv = killer:get_inventory()
 		if not inv:contains_item("main", self._itemstring) then
@@ -188,6 +204,8 @@ function boat.on_punch(self, puncher, time_from_last_punch, tool_capabilities, d
 end
 
 function boat.on_step(self, dtime, moveresult)
+	mcl_burning.tick(self.object, dtime, self)
+
 	self._v = get_v(self.object:get_velocity()) * get_sign(self._v)
 	local v_factor = 1
 	local v_slowdown = 0.02
@@ -223,7 +241,7 @@ function boat.on_step(self, dtime, moveresult)
 	self._regen_timer = regen_timer
 
 	if moveresult and moveresult.collides then
-		for _, collision in ipairs(moveresult.collisions) do
+		for _, collision in pairs(moveresult.collisions) do
 			local pos = collision.node_pos
 			if collision.type == "node" and minetest.get_item_group(minetest.get_node(pos).name, "dig_by_boat") > 0 then
 				minetest.dig_node(pos)
@@ -243,7 +261,7 @@ function boat.on_step(self, dtime, moveresult)
 		else
 			local ctrl = self._passenger:get_player_control()
 			if ctrl and ctrl.sneak then
-				detach_player(self._passenger, true)
+				detach_object(self._passenger, true)
 				self._passenger = nil
 			end
 		end
@@ -305,7 +323,7 @@ function boat.on_step(self, dtime, moveresult)
 			self._animation = 0
 		end
 
-		for _, obj in ipairs(minetest.get_objects_inside_radius(self.object:get_pos(), 1.3)) do
+		for _, obj in pairs(minetest.get_objects_inside_radius(self.object:get_pos(), 1.3)) do
 			local entity = obj:get_luaentity()
 			if entity and entity._cmi_is_mob then
 				attach_object(self, obj)
@@ -326,16 +344,17 @@ function boat.on_step(self, dtime, moveresult)
 
 	p.y = p.y - boat_y_offset
 	local new_velo
-	local new_acce = {x = 0, y = 0, z = 0}
+	local new_acce
 	if not is_water(p) and not on_ice then
 		-- Not on water or inside water: Free fall
-		local nodedef = minetest.registered_nodes[minetest.get_node(p).name]
+		--local nodedef = minetest.registered_nodes[minetest.get_node(p).name]
 		new_acce = {x = 0, y = -9.8, z = 0}
 		new_velo = get_velocity(self._v, self.object:get_yaw(),
 			self.object:get_velocity().y)
 	else
 		p.y = p.y + 1
-		if is_water(p) then
+		local is_obsidian_boat = self.object:get_luaentity()._itemstring == "mcl_boats:boat_obsidian"
+		if is_water(p) or is_obsidian_boat then
 			-- Inside water: Slowly sink
 			local y = self.object:get_velocity().y
 			y = y - 0.01
@@ -375,13 +394,13 @@ end
 -- Register one entity for all boat types
 minetest.register_entity("mcl_boats:boat", boat)
 
-local boat_ids = { "boat", "boat_spruce", "boat_birch", "boat_jungle", "boat_acacia", "boat_dark_oak" }
-local names = { S("Oak Boat"), S("Spruce Boat"), S("Birch Boat"), S("Jungle Boat"), S("Acacia Boat"), S("Dark Oak Boat") }
+local boat_ids = { "boat", "boat_spruce", "boat_birch", "boat_jungle", "boat_acacia", "boat_dark_oak", "boat_obsidian" }
+local names = { S("Oak Boat"), S("Spruce Boat"), S("Birch Boat"), S("Jungle Boat"), S("Acacia Boat"), S("Dark Oak Boat"), S("Obsidian Boat") }
 local craftstuffs = {}
 if minetest.get_modpath("mcl_core") then
-	craftstuffs = { "mcl_core:wood", "mcl_core:sprucewood", "mcl_core:birchwood", "mcl_core:junglewood", "mcl_core:acaciawood", "mcl_core:darkwood" }
+	craftstuffs = { "mcl_core:wood", "mcl_core:sprucewood", "mcl_core:birchwood", "mcl_core:junglewood", "mcl_core:acaciawood", "mcl_core:darkwood", "mcl_core:obsidian" }
 end
-local images = { "oak", "spruce", "birch", "jungle", "acacia", "dark_oak" }
+local images = { "oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "obsidian" }
 
 for b=1, #boat_ids do
 	local itemstring = "mcl_boats:"..boat_ids[b]
@@ -392,7 +411,7 @@ for b=1, #boat_ids do
 	if b == 1 then
 		help = true
 		longdesc = S("Boats are used to travel on the surface of water.")
-		usagehelp = S("Rightclick on a water source to place the boat. Rightclick the boat to enter it. Use [Left] and [Right] to steer, [Forwards] to speed up and [Backwards] to slow down or move backwards. Rightclick the boat again to leave it, punch the boat to make it drop as an item.")
+		usagehelp = S("Rightclick on a water source to place the boat. Rightclick the boat to enter it. Use [Left] and [Right] to steer, [Forwards] to speed up and [Backwards] to slow down or move backwards. Use [Sneak] to leave the boat, punch the boat to make it drop as an item.")
 		helpname = S("Boat")
 	end
 	tt_help = S("Water vehicle")
@@ -432,8 +451,9 @@ for b=1, #boat_ids do
 				pos = vector.add(pos, vector.multiply(dir, boat_y_offset_ground))
 			end
 			local boat = minetest.add_entity(pos, "mcl_boats:boat")
+			local texture = "mcl_boats_texture_"..images[b].."_boat.png"
 			boat:get_luaentity()._itemstring = itemstring
-			boat:set_properties({textures = { "mcl_boats_texture_"..images[b].."_boat.png" }})
+			boat:set_properties({textures = { texture, texture, texture, texture, texture }})
 			boat:set_yaw(placer:get_look_horizontal())
 			if not minetest.is_creative_enabled(placer:get_player_name()) then
 				itemstack:take_item()
@@ -468,6 +488,6 @@ minetest.register_craft({
 	burntime = 20,
 })
 
-if minetest.get_modpath("doc_identifier") ~= nil then
+if minetest.get_modpath("doc_identifier") then
 	doc.sub.identifier.register_object("mcl_boats:boat", "craftitems", "mcl_boats:boat")
 end

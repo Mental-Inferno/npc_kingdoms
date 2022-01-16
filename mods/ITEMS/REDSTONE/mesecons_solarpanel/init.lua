@@ -1,4 +1,4 @@
-local S = minetest.get_translator("mesecons_solarpanel")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 local boxes = { -8/16, -8/16, -8/16,  8/16, -2/16, 8/16 }
 
@@ -81,11 +81,11 @@ minetest.register_node("mesecons_solarpanel:solar_panel_off", {
 })
 
 minetest.register_craft({
-	output = 'mesecons_solarpanel:solar_panel_off',
+	output = "mesecons_solarpanel:solar_panel_off",
 	recipe = {
-		{'mcl_core:glass', 'mcl_core:glass', 'mcl_core:glass'},
-		{'mcl_nether:quartz', 'mcl_nether:quartz', 'mcl_nether:quartz'},
-		{'group:wood_slab', 'group:wood_slab', 'group:wood_slab'},
+		{"mcl_core:glass", "mcl_core:glass", "mcl_core:glass"},
+		{"mcl_nether:quartz", "mcl_nether:quartz", "mcl_nether:quartz"},
+		{"group:wood_slab", "group:wood_slab", "group:wood_slab"},
 	}
 })
 
@@ -96,8 +96,9 @@ minetest.register_abm({
 	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		local light = minetest.get_node_light(pos, nil)
+		local time = minetest.get_us_time()
 
-		if light >= 12 and minetest.get_timeofday() > 0.2 and minetest.get_timeofday() < 0.8 then
+		if light >= 14 and time > 6000 then
 			minetest.set_node(pos, {name="mesecons_solarpanel:solar_panel_on", param2=node.param2})
 			mesecon.receptor_on(pos, mesecon.rules.pplate)
 		end
@@ -111,8 +112,9 @@ minetest.register_abm({
 	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		local light = minetest.get_node_light(pos, nil)
+		local time = minetest.get_us_time()
 
-		if light < 12 then
+		if light < 14 and time > 18000 then
 			minetest.set_node(pos, {name="mesecons_solarpanel:solar_panel_off", param2=node.param2})
 			mesecon.receptor_off(pos, mesecon.rules.pplate)
 		end
@@ -203,8 +205,9 @@ minetest.register_abm({
 	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		local light = minetest.get_node_light(pos, nil)
+		local time = minetest.get_us_time()
 
-		if light < 12 then
+		if light < 14 and time > 18000 then
 			minetest.set_node(pos, {name="mesecons_solarpanel:solar_panel_inverted_on", param2=node.param2})
 			mesecon.receptor_on(pos, mesecon.rules.pplate)
 		end
@@ -218,8 +221,9 @@ minetest.register_abm({
 	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
 		local light = minetest.get_node_light(pos, nil)
+		local time = minetest.get_us_time()
 
-		if light >= 12 and minetest.get_timeofday() > 0.8 and minetest.get_timeofday() < 0.2 then
+		if light >= 14 and time > 6000 then
 			minetest.set_node(pos, {name="mesecons_solarpanel:solar_panel_inverted_off", param2=node.param2})
 			mesecon.receptor_off(pos, mesecon.rules.pplate)
 		end

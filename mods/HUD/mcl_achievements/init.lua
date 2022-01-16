@@ -3,7 +3,7 @@
 -- If true, activates achievements from other Minecraft editions (XBox, PS, etc.)
 local non_pc_achievements = false
 
-local S = minetest.get_translator("mcl_achievements")
+local S = minetest.get_translator(minetest.get_current_modname())
 
 -- Achievements from PC Edition
 
@@ -108,11 +108,6 @@ awards.register_achievement("mcl:diamonds", {
 	description = S("Pick up a diamond from the floor."),
 	icon = "mcl_core_diamond_ore.png",
 })
-awards.register_achievement("mcl:blazeRod", {
-	title = S("Into Fire"),
-	description = S("Pick up a blaze rod from the floor."),
-	icon = "mcl_mobitems_blaze_rod.png",
-})
 
 awards.register_achievement("mcl:killCow", {
 	title = S("Cow Tipper"),
@@ -147,21 +142,7 @@ awards.register_achievement("mcl:onARail", {
 	icon = "default_rail.png",
 })
 
--- Triggered in mcl_bows
-awards.register_achievement("mcl:snipeSkeleton", {
-	title = S("Sniper Duel"),
-	-- TODO: This achievement should be for killing, not hitting
-	-- TODO: The range should be 50, not 20. Nerfed because of reduced bow range
-	description = S("Hit a skeleton, wither skeleton or stray by bow and arrow from a distance of at least 20 meters."),
-	icon = "mcl_bows_bow.png",
-})
 
--- Triggered in mcl_portals
-awards.register_achievement("mcl:buildNetherPortal", {
-	title = S("Into the Nether"),
-	description = S("Use obsidian and a fire starter to construct a Nether portal."),
-	icon = "default_obsidian.png",
-})
 
 -- NON-PC ACHIEVEMENTS (XBox, Pocket Edition, etc.)
 
@@ -198,16 +179,6 @@ if non_pc_achievements then
 			target = 1,
 		}
 	})
-	awards.register_achievement("mcl:n_eatRottenFlesh", {
-		title = S("Iron Belly"),
-		description = S("Get really desperate and eat rotten flesh."),
-		icon = "mcl_mobitems_rotten_flesh.png",
-		trigger = {
-			type = "eat",
-			item= "mcl_mobitems:rotten_flesh",
-			target = 1,
-		}
-	})
 	awards.register_achievement("mcl:n_placeFlowerpot", {
 		title = S("Pot Planter"),
 		description = S("Place a flower pot."),
@@ -238,3 +209,20 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		awards.show_to(name, name, nil, false)
 	end
 end)
+
+
+awards.register_achievement("mcl:stoneAge", {
+	title		= S("Stone Age"),
+	description	= S("Mine a stone with new pickaxe."),
+	icon		= "default_cobble.png",
+})
+awards.register_achievement("mcl:hotStuff", {
+	title		= S("Hot Stuff"),
+	description	= S("Put lava in a bucket."),
+	icon		= "bucket_lava.png",
+})
+awards.register_achievement("mcl:obsidian", {
+	title		= S("Ice Bucket Challenge"),
+	description	= S("Obtain an obsidian block."),
+	icon		= "default_obsidian.png",
+})

@@ -3,8 +3,9 @@
 
 -- NOTE: Strings intentionally not marked for translation, other mods already have these items.
 -- TODO: Remove this file eventually, all items here are already outsourced in other mods.
+-- TODO: Add translation.
 
-local S = minetest.get_translator("mobs_mc")
+--local S = local S = minetest.get_translator(minetest.get_current_modname())
 
 -- Heads system
 
@@ -56,7 +57,4 @@ local function addhead(mobname, desc, longdesc)
 end
 
 -- Add heads
-addhead("zombie", "Zombie Head", "A zombie head is a small decorative block which resembles the head of a zombie.")
 addhead("creeper", "Creeper Head", "A creeper head is a small decorative block which resembles the head of a creeper.")
-addhead("skeleton", "Skeleton Skull", "A skeleton skull is a small decorative block which resembles the skull of a skeleton.")
-addhead("wither_skeleton", "Wither Skeleton Skull", "A wither skeleton skull is a small decorative block which resembles the skull of a wither skeleton.")

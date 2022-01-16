@@ -21,11 +21,11 @@ The basic digging time groups determine by which tools a node can be dug.
 * `swordy=1`: Diggable by sword (any material), and this node is *not* a cobweb
 * `swordy_cobweb=1`: Diggable by sword (any material), and this node is a cobweb
 * `shearsy=1`: Diggable by shears, and this node is *not* wool
-* `shearsy=wool=1`: Diggable by shears, and this node is wool
+* `shearsy_wool=1`: Diggable by shears, and this node is wool
 * `handy=1`: Breakable by hand and this node gives it useful drop when dug by hand. All nodes which are breakable by pickaxe, axe, shovel, sword or shears are also automatically breakable by hand, but not neccess
 * `creative_breakable=1`: Block is breakable by hand in creative mode. This group is implied if the node belongs to any other digging group
 
-Please read <http://minecraft.gamepedia.com/Breaking> to learn how digging times work in Minecraft, as MineClone 2 is based on the same system.
+Please read <http://minecraft.gamepedia.com/Breaking> to learn how digging times work in Minecraft, as MineClone 5 is based on the same system.
 
 ### Groups for interactions
 
@@ -149,7 +149,7 @@ These groups are used mostly for informational purposes
 * `trapdoor=2`: Open trapdoor
 * `glass=1`: Glass (full cubes only)
 * `rail=1`: Rail
-* `music_record`: Music Disc (rating is track ID)
+* `music_record`: Item is Music Disc
 * `tnt=1`: Block is TNT
 * `boat=1`: Boat
 * `minecart=1`: Minecart

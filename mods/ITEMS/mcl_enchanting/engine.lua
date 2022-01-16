@@ -1,4 +1,4 @@
-local S = minetest.get_translator("mcl_enchanting")
+local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
 
 function mcl_enchanting.is_book(itemname)
@@ -6,23 +6,27 @@ function mcl_enchanting.is_book(itemname)
 end
 
 function mcl_enchanting.get_enchantments(itemstack)
+	if not itemstack then
+		return {}
+	end
 	return minetest.deserialize(itemstack:get_meta():get_string("mcl_enchanting:enchantments")) or {}
 end
 
 function mcl_enchanting.unload_enchantments(itemstack)
 	local itemdef = itemstack:get_definition()
 	if itemdef.tool_capabilities then
-		itemstack:get_meta():set_tool_capabilities(itemdef.tool_capabilities)
+		itemstack:get_meta():set_tool_capabilities(nil)
 	end
 	local meta = itemstack:get_meta()
 	if meta:get_string("name") == "" then
 		meta:set_string("description", "")
+		meta:set_string("groupcaps_hash", "")
 	end
 end
 
 function mcl_enchanting.load_enchantments(itemstack, enchantments)
 	if not mcl_enchanting.is_book(itemstack:get_name()) then
-		mcl_enchanting.unload_enchantments(itemstack)		
+		mcl_enchanting.unload_enchantments(itemstack)
 		for enchantment, level in pairs(enchantments or mcl_enchanting.get_enchantments(itemstack)) do
 			local enchantment_def = mcl_enchanting.enchantments[enchantment]
 			if enchantment_def.on_enchant then
@@ -52,7 +56,7 @@ function mcl_enchanting.get_enchantment_description(enchantment, level)
 end
 
 function mcl_enchanting.get_colorized_enchantment_description(enchantment, level)
-	return minetest.colorize(mcl_enchanting.enchantments[enchantment].curse and "#FC5454" or "#A8A8A8", mcl_enchanting.get_enchantment_description(enchantment, level))
+	return minetest.colorize(mcl_enchanting.enchantments[enchantment].curse and mcl_colors.RED or mcl_colors.GRAY, mcl_enchanting.get_enchantment_description(enchantment, level))
 end
 
 function mcl_enchanting.get_enchanted_itemstring(itemname)
@@ -119,7 +123,7 @@ function mcl_enchanting.can_enchant(itemstack, enchantment, level)
 	if itemname == "" then
 		return false, "item missing"
 	end
-	local supported, primary = mcl_enchanting.item_supports_enchantment(itemstack:get_name(), enchantment)
+	local supported, primary = mcl_enchanting.item_supports_enchantment(itemname, enchantment)
 	if not supported then
 		return false, "item not supported"
 	end
@@ -128,7 +132,7 @@ function mcl_enchanting.can_enchant(itemstack, enchantment, level)
 	end
 	if level > enchantment_def.max_level then
 		return false, "level too high", enchantment_def.max_level
-	elseif  level < 1 then
+	elseif level < 1 then
 		return false, "level too small", 1
 	end
 	local item_enchantments = mcl_enchanting.get_enchantments(itemstack)
@@ -159,7 +163,7 @@ function mcl_enchanting.combine(itemstack, combine_with)
 	local itemname = itemstack:get_name()
 	local combine_name = combine_with:get_name()
 	local enchanted_itemname = mcl_enchanting.get_enchanted_itemstring(itemname)
-	if enchanted_itemname ~= mcl_enchanting.get_enchanted_itemstring(combine_name) and not mcl_enchanting.is_book(combine_name) then
+	if not enchanted_itemname or enchanted_itemname ~= mcl_enchanting.get_enchanted_itemstring(combine_name) and not mcl_enchanting.is_book(combine_name) then
 		return false
 	end
 	local enchantments = mcl_enchanting.get_enchantments(itemstack)
@@ -219,6 +223,38 @@ function mcl_enchanting.enchantments_snippet(_, _, itemstack)
 	end
 end
 
+-- Returns the after_use callback function to use when registering an enchanted
+-- item.  The after_use callback is used to update the tool_capabilities of
+-- efficiency enchanted tools with outdated digging times.
+--
+-- It does this by calling apply_efficiency to reapply the efficiency
+-- enchantment.  That function is written to use hash values to only update the
+-- tool if neccessary.
+--
+-- This is neccessary for digging times of tools to be in sync when MineClone2
+-- or mods add new hardness values.
+local function get_after_use_callback(itemdef)
+	if itemdef.after_use then
+		-- If the tool already has an after_use, make sure to call that
+		-- one too.
+		return function(itemstack, user, node, digparams)
+			itemdef.after_use(itemstack, user, node, digparams)
+			mcl_enchanting.update_groupcaps(itemstack)
+		end
+	end
+
+	-- If the tool does not have after_use, add wear to the tool as if no
+	-- after_use was registered.
+	return function(itemstack, user, node, digparams)
+		if not minetest.is_creative_enabled(user) then
+			itemstack:add_wear(digparams.wear)
+		end
+
+		--local enchantments = mcl_enchanting.get_enchantments(itemstack)
+		mcl_enchanting.update_groupcaps(itemstack)
+	end
+end
+
 function mcl_enchanting.initialize()
 	local register_tool_list = {}
 	local register_item_list = {}
@@ -234,8 +270,16 @@ function mcl_enchanting.initialize()
 			new_def.groups.not_in_creative_inventory = 1
 			new_def.groups.not_in_craft_guide = 1
 			new_def.groups.enchanted = 1
-			new_def.texture = itemdef.texture or itemname:gsub("%:", "_")
+
+			if new_def._mcl_armor_texture and not type(new_def._mcl_armor_texture) == "function" then
+				new_def._mcl_armor_texture = new_def._mcl_armor_texture .. mcl_enchanting.overlay
+			end
+			if new_def._mcl_armor_preview and not type(new_def._mcl_armor_preview) == "function" then
+				new_def._mcl_armor_preview = new_def._mcl_armor_preview .. mcl_enchanting.overlay
+			end
+
 			new_def._mcl_enchanting_enchanted_tool = new_name
+			new_def.after_use = get_after_use_callback(itemdef)
 			local register_list = register_item_list
 			if itemdef.type == "tool" then
 				register_list = register_tool_list
@@ -251,106 +295,125 @@ function mcl_enchanting.initialize()
 	end
 end
 
-function mcl_enchanting.get_possible_enchantments(itemstack, enchantment_level, treasure)
-	local possible_enchantments, weights, accum_weight = {}, {}, 0
-	for enchantment, enchantment_def in pairs(mcl_enchanting.enchantments) do
-		local supported, _, _, primary = mcl_enchanting.can_enchant(itemstack, enchantment, 1)
-		if primary or treasure then
-			table.insert(possible_enchantments, enchantment)
-			accum_weight = accum_weight + enchantment_def.weight
-			weights[enchantment] = accum_weight
-		end
+function mcl_enchanting.random(pr, ...)
+	local r = pr and pr:next(...) or math.random(...)
+
+	if pr and not ({...})[1] then
+		r = r / 32767
 	end
-	return possible_enchantments, weights, accum_weight
+
+	return r
 end
 
-function mcl_enchanting.generate_random_enchantments(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted)
+function mcl_enchanting.get_random_enchantment(itemstack, treasure, weighted, exclude, pr)
+	local possible = {}
+
+	for enchantment, enchantment_def in pairs(mcl_enchanting.enchantments) do
+		local can_enchant, _, _, primary = mcl_enchanting.can_enchant(itemstack, enchantment, 1)
+
+		if can_enchant and (primary or treasure) and (not exclude or table.indexof(exclude, enchantment) == -1) then
+			local weight = weighted and enchantment_def.weight or 1
+
+			for i = 1, weight do
+				table.insert(possible, enchantment)
+			end
+		end
+	end
+
+	return #possible > 0 and possible[mcl_enchanting.random(pr, 1, #possible)]
+end
+
+function mcl_enchanting.generate_random_enchantments(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted, pr)
 	local itemname = itemstack:get_name()
+
 	if not mcl_enchanting.can_enchant_freshly(itemname) and not ignore_already_enchanted then
 		return
 	end
+
 	itemstack = ItemStack(itemstack)
+
 	local enchantability = minetest.get_item_group(itemname, "enchantability")
-	enchantability = 1 + math.random(0, math.floor(enchantability / 4)) + math.random(0, math.floor(enchantability / 4))
+	enchantability = 1 + mcl_enchanting.random(pr, 0, math.floor(enchantability / 4)) + mcl_enchanting.random(pr, 0, math.floor(enchantability / 4))
+
 	enchantment_level = enchantment_level + enchantability
-	enchantment_level = enchantment_level + enchantment_level * (math.random() + math.random() - 1) * 0.15
+	enchantment_level = enchantment_level + enchantment_level * (mcl_enchanting.random(pr) + mcl_enchanting.random(pr) - 1) * 0.15
 	enchantment_level = math.max(math.floor(enchantment_level + 0.5), 1)
+
 	local enchantments = {}
 	local description
+
 	enchantment_level = enchantment_level * 2
+
 	repeat
 		enchantment_level = math.floor(enchantment_level / 2)
+
 		if enchantment_level == 0 then
 			break
 		end
-		local possible, weights, accum_weight = mcl_enchanting.get_possible_enchantments(itemstack, enchantment_level, treasure)
-		local selected_enchantment, enchantment_power
-		if #possible > 0 then
-			local r = math.random(accum_weight)
-			for _, enchantment in ipairs(possible) do
-				if weights[enchantment] >= r then
-					selected_enchantment = enchantment
-					break
-				end
-			end
-			local enchantment_def = mcl_enchanting.enchantments[selected_enchantment]
-			local power_range_table = enchantment_def.power_range_table
-			for i = enchantment_def.max_level, 1, -1 do
-				local power_range = power_range_table[i]
-				if enchantment_level >= power_range[1] and enchantment_level <= power_range[2] then
-					enchantment_power = i
-					break
-				end
-			end
-			if not description then
-				if not enchantment_power then
-					return
-				end
-				description = mcl_enchanting.get_enchantment_description(selected_enchantment, enchantment_power)
-			end
-			if enchantment_power then
-				enchantments[selected_enchantment] = enchantment_power
-				mcl_enchanting.enchant(itemstack, selected_enchantment, enchantment_power)
-			end
-		else
+
+		local selected_enchantment = mcl_enchanting.get_random_enchantment(itemstack, treasure, true, nil, pr)
+
+		if not selected_enchantment then
 			break
 		end
-	until not no_reduced_bonus_chance and math.random() >= (enchantment_level + 1) / 50
+
+		local enchantment_def = mcl_enchanting.enchantments[selected_enchantment]
+		local power_range_table = enchantment_def.power_range_table
+
+		local enchantment_power
+
+		for i = enchantment_def.max_level, 1, -1 do
+			local power_range = power_range_table[i]
+			if enchantment_level >= power_range[1] and enchantment_level <= power_range[2] then
+				enchantment_power = i
+				break
+			end
+		end
+
+		if not description then
+			if not enchantment_power then
+				return
+			end
+
+			description = mcl_enchanting.get_enchantment_description(selected_enchantment, enchantment_power)
+		end
+
+		if enchantment_power then
+			enchantments[selected_enchantment] = enchantment_power
+			mcl_enchanting.enchant(itemstack, selected_enchantment, enchantment_power)
+		end
+
+	until not no_reduced_bonus_chance and mcl_enchanting.random(pr) >= (enchantment_level + 1) / 50
+
 	return enchantments, description
 end
 
-function mcl_enchanting.generate_random_enchantments_reliable(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted)
+function mcl_enchanting.generate_random_enchantments_reliable(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted, pr)
 	local enchantments
+
 	repeat
-		enchantments = mcl_enchanting.generate_random_enchantments(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted)
+		enchantments = mcl_enchanting.generate_random_enchantments(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted, pr)
 	until enchantments
+
 	return enchantments
 end
 
-function mcl_enchanting.enchant_randomly(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted)
+function mcl_enchanting.enchant_randomly(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted, pr)
+	local enchantments = mcl_enchanting.generate_random_enchantments_reliable(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted, pr)
+
 	mcl_enchanting.set_enchanted_itemstring(itemstack)
-	mcl_enchanting.set_enchantments(itemstack, mcl_enchanting.generate_random_enchantments_reliable(itemstack, enchantment_level, treasure, no_reduced_bonus_chance, ignore_already_enchanted))
+	mcl_enchanting.set_enchantments(itemstack, enchantments)
+
 	return itemstack
 end
 
-function mcl_enchanting.get_randomly_enchanted_book(enchantment_level, treasure, no_reduced_bonus_chance)
-	return mcl_enchanting.enchant_randomly(ItemStack("mcl_books:book"), enchantment_level, treasure, no_reduced_bonus_chance, true)
-end
+function mcl_enchanting.enchant_uniform_randomly(stack, exclude, pr)
+	local enchantment = mcl_enchanting.get_random_enchantment(stack, true, false, exclude, pr)
 
-function mcl_enchanting.get_uniform_randomly_enchanted_book(except)
-	except = except or except
-	local stack = ItemStack("mcl_enchanting:book_enchanted")
-	local list = {}
-	for enchantment in pairs(mcl_enchanting.enchantments) do
-		if table.indexof(except, enchantment) == -1 then
-			table.insert(list, enchantment)
-		end
+	if enchantment then
+		mcl_enchanting.enchant(stack, enchantment, mcl_enchanting.random(pr, 1, mcl_enchanting.enchantments[enchantment].max_level))
 	end
-	local index = math.random(#list)
-	local enchantment = list[index]
-	local enchantment_def = mcl_enchanting.enchantments[enchantment]
-	local level = math.random(enchantment_def.max_level)
-	mcl_enchanting.enchant(stack, enchantment, level)
+
 	return stack
 end
 
@@ -446,7 +509,7 @@ function mcl_enchanting.show_enchanting_formspec(player)
 		.. "real_coordinates[true]"
 		.. "image[3.15,0.6;7.6,4.1;mcl_enchanting_button_background.png]"
 	local itemstack = inv:get_stack("enchanting_item", 1)
-	local player_levels = mcl_experience.get_player_xp_level(player)
+	local player_levels = mcl_experience.get_level(player)
 	local y = 0.65
 	local any_enchantment = false
 	local table_slots = mcl_enchanting.get_table_slots(player, itemstack, num_bookshelves)
@@ -459,7 +522,7 @@ function mcl_enchanting.show_enchanting_formspec(player)
 		local hover_ending = (can_enchant and "_hovered" or "_off")
 		formspec = formspec
 			.. "container[3.2," .. y .. "]"
-			.. (slot and "tooltip[button_" .. i .. ";" .. C("#818181") .. F(slot.description) .. " " .. C("#FFFFFF") .. " . . . ?\n\n" .. (enough_levels and C(enough_lapis and "#818181" or "#FC5454") .. F(S("@1 Lapis Lazuli", i)) .. "\n" .. C("#818181") .. F(S("@1 Enchantment Levels", i)) or C("#FC5454") .. F(S("Level requirement: @1", slot.level_requirement))) .. "]" or "")
+			.. (slot and "tooltip[button_" .. i .. ";" .. C("#818181") .. ((slot.description and F(slot.description)) or "") .. " " .. C("#FFFFFF") .. " . . . ?\n\n" .. (enough_levels and C(enough_lapis and "#818181" or "#FC5454") .. F(S("@1 Lapis Lazuli", i)) .. "\n" .. C("#818181") .. F(S("@1 Enchantment Levels", i)) or C("#FC5454") .. F(S("Level requirement: @1", slot.level_requirement))) .. "]" or "")
 			.. "style[button_" .. i .. ";bgimg=mcl_enchanting_button" .. ending .. ".png;bgimg_hovered=mcl_enchanting_button" .. hover_ending .. ".png;bgimg_pressed=mcl_enchanting_button" .. hover_ending .. ".png]"
 			.. "button[0,0;7.5,1.3;button_" .. i .. ";]"
 			.. (slot and "image[0,0;1.3,1.3;mcl_enchanting_number_" .. i .. ending .. ".png]" or "")
@@ -496,11 +559,11 @@ function mcl_enchanting.handle_formspec_fields(player, formname, fields)
 		if not slot then
 			return
 		end
-		local player_level = mcl_experience.get_player_xp_level(player)
+		local player_level = mcl_experience.get_level(player)
 		if player_level < slot.level_requirement then
 			return
 		end
-		mcl_experience.set_player_xp_level(player, player_level - button_pressed)
+		mcl_experience.set_level(player, player_level - button_pressed)
 		inv:remove_item("enchanting_lapis", cost)
 		mcl_enchanting.set_enchanted_itemstring(itemstack)
 		mcl_enchanting.set_enchantments(itemstack, slot.enchantments)
@@ -540,7 +603,12 @@ function mcl_enchanting.allow_inventory_action(player, action, inventory, invent
 			local listname = inventory_info.to_list
 			local stack = inventory:get_stack(inventory_info.from_list, inventory_info.from_index)
 			if stack:get_name() == "mcl_dye:blue" and listname ~= "enchanting_item" then
-				return math.min(inventory:get_stack("enchanting_lapis", 1):get_free_space(), stack:get_count())
+				local count = stack:get_count()
+				local old_stack = inventory:get_stack("enchanting_lapis", 1)
+				if old_stack:get_name() ~= "" then
+					count = math.min(count, old_stack:get_free_space())
+				end
+				return count
 			elseif inventory:get_stack("enchanting_item", 1):get_count() == 0 and listname ~= "enchanting_lapis" then
 				return 1
 			else

@@ -19,7 +19,7 @@
 --     TODO: Internal inventory, pick up items, trade with other villagers
 --     TODO: Farm stuff
 
-local S = minetest.get_translator("mobs_mc")
+local S = minetest.get_translator(minetest.get_current_modname())
 local N = function(s) return s end
 local F = minetest.formspec_escape
 
@@ -195,7 +195,7 @@ local professions = {
 
 			{
 			-- TODO: replace with empty map
-			{ { "mcl_core:emerald", 7, 11}, { "mcl_maps:filled_map", 1, 1 } },
+			{ { "mcl_core:emerald", 7, 11}, { "mcl_maps:empty_map", 1, 1 } },
 			},
 
 			-- TODO: special maps
@@ -388,7 +388,7 @@ end
 
 local init_trades = function(self, inv)
 	local profession = professions[self._profession]
-	local trade_tiers = profession.trades
+	local trade_tiers = profession and profession.trades
 	if trade_tiers == nil then
 		-- Empty trades
 		self._trades = false
@@ -409,7 +409,7 @@ local init_trades = function(self, inv)
 			local offered_stack = ItemStack({name = offered_item, count = offered_count})
 			if mcl_enchanting.is_enchanted(offered_item) then
 				if mcl_enchanting.is_book(offered_item) then
-					offered_stack = mcl_enchanting.get_uniform_randomly_enchanted_book({"soul_speed"})
+					mcl_enchanting.enchant_uniform_randomly(offered_stack, {"soul_speed"})
 				else
 					mcl_enchanting.enchant_randomly(offered_stack, math.random(5, 19), false, false, true)
 					mcl_enchanting.unload_enchantments(offered_stack)
@@ -927,6 +927,7 @@ end)
 --[=======[ MOB REGISTRATION AND SPAWNING ]=======]
 
 mobs:register_mob("mobs_mc:villager", {
+	description = S("Villager"),
 	type = "npc",
 	spawn_class = "passive",
 	hp_min = 20,
@@ -960,13 +961,21 @@ mobs:register_mob("mobs_mc:villager", {
 		"mobs_mc_villager_smith.png", --hat
 	},
 	},
-	visual_size = {x=3, y=3},
+	visual_size = {x=2.75, y=2.75},
+	rotate = 270,
+	skittish = true,
 	makes_footstep_sound = true,
 	walk_velocity = 1.2,
-	run_velocity = 2.4,
+	run_velocity = 3,
 	drops = {},
 	can_despawn = false,
 	-- TODO: sounds
+	sounds = {
+		random = "mobs_mc_villager",
+		damage = "mobs_mc_villager_hurt",
+		death  = "mobs_mc_villager_hurt",
+		distance = 10,
+	},
 	animation = {
 		stand_speed = 25,
 		stand_start = 40,
@@ -1070,7 +1079,35 @@ mobs:register_mob("mobs_mc:villager", {
 
 
 
-mobs:spawn_specific("mobs_mc:villager", mobs_mc.spawn.village, {"air"}, 0, minetest.LIGHT_MAX+1, 30, 20, 4, mobs_mc.spawn_height.water+1, mobs_mc.spawn_height.overworld_max)
+mobs:spawn_specific(
+"mobs_mc:villager",
+"overworld",
+"ground",
+{
+"FlowerForest",
+"Swampland",
+"Taiga",
+"ExtremeHills",
+"BirchForest",
+"MegaSpruceTaiga",
+"MegaTaiga",
+"ExtremeHills+",
+"Forest",
+"Plains",
+"ColdTaiga",
+"SunflowerPlains",
+"RoofedForest",
+"MesaPlateauFM_grasstop",
+"ExtremeHillsM",
+"BirchForestM",
+},
+0,
+minetest.LIGHT_MAX+1,
+30,
+20,
+4,
+mobs_mc.spawn_height.water+1,
+mobs_mc.spawn_height.overworld_max)
 
 -- spawn eggs
 mobs:register_egg("mobs_mc:villager", S("Villager"), "mobs_mc_spawn_icon_villager.png", 0)

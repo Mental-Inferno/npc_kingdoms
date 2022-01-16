@@ -1,3 +1,5 @@
+local table = table
+
 -- Player state for public API
 mcl_playerinfo = {}
 
@@ -21,7 +23,7 @@ end
 
 local time = 0
 
-local get_player_nodes = function(player_pos)
+local function get_player_nodes(player_pos)
 	local work_pos = table.copy(player_pos)
 
 	-- what is around me?
@@ -52,7 +54,7 @@ minetest.register_globalstep(function(dtime)
 	time = 0
 
 	-- check players
-	for _,player in ipairs(minetest.get_connected_players()) do
+	for _,player in pairs(minetest.get_connected_players()) do
 		-- who am I?
 		local name = player:get_player_name()
 

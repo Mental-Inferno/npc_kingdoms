@@ -15,7 +15,7 @@ with name "mobs_mc_gameconfig". ]]
 -- Set to false in your gameconfig mod if you create your own monster egg nodes.
 mobs_mc.create_monster_egg_nodes = true
 
-mobs_mc.items = {}
+--mobs_mc.items = {}
 
 mobs_mc.items = {
 	-- Items defined in mobs_mc
@@ -81,7 +81,9 @@ mobs_mc.items = {
 	gunpowder = "tnt:gunpowder",
 	flint_and_steel = "fire:flint_and_steel",
 	water_source = "default:water_source",
+	water_flowing = "default:water_flowing",
 	river_water_source = "default:river_water_source",
+	--water_flowing = "default:river_water_flowing",
 	black_dye = "dye:black",
 	poppy = "flowers:rose",
 	dandelion = "flowers:dandelion_yellow",
@@ -126,7 +128,6 @@ mobs_mc.items = {
 
 	nether_portal = "nether:portal",
 	netherrack = "nether:rack",
-	nether_brick_block = "nether:brick",
 
 	-- Wool (Minecraft color scheme)
 	wool_white = "wool:white",
@@ -290,13 +291,13 @@ mobs_mc.spawn = {
 mobs_mc.spawn_height = {
 	water = tonumber(minetest.settings:get("water_level")) or 0, -- Water level in the Overworld
 
-	-- Overworld boundaries (inclusive)
-	overworld_min = -2999,
+	-- Overworld boundaries (inclusive) --I adjusted this to be more reasonable
+	overworld_min = -64,-- -2999,
 	overworld_max = 31000,
 
 	-- Nether boundaries (inclusive)
-	nether_min = -3369,
-	nether_max = -3000,
+	nether_min = -29067,-- -3369,
+	nether_max = -28939,-- -3000,
 
 	-- End boundaries (inclusive)
 	end_min = -6200,

@@ -1,4 +1,4 @@
-local S = minetest.get_translator("mcl_banners")
+local S = minetest.get_translator(minetest.get_current_modname())
 local N = function(s) return s end
 
 -- Pattern crafting. This file contains the code for crafting all the
@@ -7,9 +7,6 @@ local N = function(s) return s end
 
 -- Maximum number of layers which can be put on a banner by crafting.
 local max_layers_crafting = 12
-
--- Maximum number of layers when banner includes a gradient (workaround, see below).
-local max_layers_gradient = 3
 
 -- Max. number lines in the descriptions for the banner layers.
 -- This is done to avoid huge tooltips.
@@ -122,8 +119,7 @@ local patterns = {
 
 		name = N("@1 Thing Charge"),
 		type = "shapeless",
-		-- TODO: Replace with enchanted golden apple
-		{ e, "mcl_core:apple_gold", d },
+		{ e, "mcl_core:apple_gold_enchanted", d },
 	},
 	["rhombus"] = {
 		name = N("@1 Lozenge"),
@@ -253,8 +249,13 @@ for colorid, colortab in pairs(mcl_banners.colors) do
 	dye_to_colorid_mapping[colortab[5]] = colorid
 end
 
+local dye_to_itemid_mapping = {}
+for colorid, colortab in pairs(mcl_banners.colors) do
+	dye_to_itemid_mapping[colortab[5]] = colortab[1]
+end
+
 -- Create a banner description containing all the layer names
-mcl_banners.make_advanced_banner_description = function(description, layers)
+function mcl_banners.make_advanced_banner_description(description, layers)
 	if layers == nil or #layers == 0 then
 		-- No layers, revert to default
 		return ""
@@ -281,7 +282,7 @@ mcl_banners.make_advanced_banner_description = function(description, layers)
 
 		-- Final string concatenations: Just a list of strings
 		local append = table.concat(layerstrings, "\n")
-		description = description .. "\n" .. minetest.colorize("#8F8F8F", append)
+		description = description .. "\n" .. minetest.colorize(mcl_colors.GRAY, append)
 		return description
 	end
 end
@@ -291,7 +292,7 @@ Parameters same as for minetest.register_craft_predict.
 craft_predict is set true when called from minetest.craft_preview, in this case, this function
 MUST NOT change the crafting grid.
 ]]
-local banner_pattern_craft = function(itemstack, player, old_craft_grid, craft_inv, craft_predict)
+local function banner_pattern_craft(itemstack, player, old_craft_grid, craft_inv, craft_predict)
 	if minetest.get_item_group(itemstack:get_name(), "banner") ~= 1 then
 		return
 	end
@@ -393,16 +394,6 @@ local banner_pattern_craft = function(itemstack, player, old_craft_grid, craft_i
 	if #layers >= max_layers_crafting then
 		return ItemStack("")
 	end
-	-- Lower layer limit when banner includes any gradient.
-	-- Workaround to circumvent Minetest bug (https://github.com/minetest/minetest/issues/6210)
-	-- TODO: Remove this restriction when bug #6210 is fixed.
-	if #layers >= max_layers_gradient then
-		for l=1, #layers do
-			if layers[l].pattern == "gradient" or layers[l].pattern == "gradient_up" then
-				return ItemStack("")
-			end
-		end
-	end
 
 	local matching_pattern
 	local max_i = player:get_inventory():get_size("craft")
@@ -421,7 +412,6 @@ local banner_pattern_craft = function(itemstack, player, old_craft_grid, craft_i
 					if (pitem == d and minetest.get_item_group(itemname, "dye") == 0) or (pitem == e and itemname ~= e and inv_i ~= banner_index) then
 						pattern_ok = false
 						break
-					else
 					end
 					inv_i = inv_i + 1
 					if inv_i > max_i then
@@ -491,7 +481,14 @@ local banner_pattern_craft = function(itemstack, player, old_craft_grid, craft_i
 		imeta:set_string("description", ometa:get_string("description"))
 		imeta:set_string("name", mname)
 	end
-	return itemstack
+
+	if craft_predict then
+		local itemid_prefix = "mcl_banners:banner_preview"
+		local coloritemid = dye_to_itemid_mapping[dye]
+		return ItemStack(itemid_prefix .. "_" .. matching_pattern .. "_" .. coloritemid)
+	else
+		return itemstack
+	end
 end
 
 minetest.register_craft_predict(function(itemstack, player, old_craft_grid, craft_inv)

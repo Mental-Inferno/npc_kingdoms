@@ -1,4 +1,10 @@
-local S = minetest.get_translator("mcl_jukebox")
+local S = minetest.get_translator(minetest.get_current_modname())
+local C = minetest.colorize
+
+local math = math
+
+mcl_jukebox = {}
+mcl_jukebox.registered_records = {}
 
 -- Player name-indexed table containing the currently heard track
 local active_tracks = {}
@@ -10,47 +16,30 @@ local active_huds = {}
 -- Used to make sure that minetest.after only applies to the latest HUD change event
 local hud_sequence_numbers = {}
 
--- List of music
-local recorddata = {
-	-- { title, author, identifier }
-	{ "The Evil Sister (Jordach's Mix)", "SoundHelix", "13" } ,
-	{ "The Energetic Rat (Jordach's Mix)", "SoundHelix", "wait" },
-	{ "Eastern Feeling", "Jordach", "blocks"},
-	{ "Minetest", "Jordach", "far" },
-	{ "Credit Roll (Jordach's HD Mix)", "Junichi Masuda", "chirp" },
-	{ "Winter Feeling", "Tom Peter", "strad" },
-	{ "Synthgroove (Jordach's Mix)", "HeroOfTheWinds", "mellohi" },
-	{ "The Clueless Frog (Jordach's Mix)", "SoundHelix", "mall" },
-}
-local records = #recorddata
-
-for r=1, records do
-	local doc = false
-	local entryname, longdesc, usagehelp
-	if r == 1 then
-		doc = true
-		entryname = S("Music Disc")
-		longdesc = S("A music disc holds a single music track which can be used in a jukebox to play music.")
-		usagehelp = S("Place a music disc into an empty jukebox to play the music. Use the jukebox again to retrieve the music disc. The music can only be heard by you, not by other players.")
-	end
-	minetest.register_craftitem("mcl_jukebox:record_"..r, {
+function mcl_jukebox.register_record(title, author, identifier, image, sound)
+	mcl_jukebox.registered_records["mcl_jukebox:record_"..identifier] = {title, author, identifier, image, sound}
+	local entryname = S("Music Disc")
+	local longdesc = S("A music disc holds a single music track which can be used in a jukebox to play music.")
+	local usagehelp = S("Place a music disc into an empty jukebox to play the music. Use the jukebox again to retrieve the music disc. The music can only be heard by you, not by other players.")
+	minetest.register_craftitem(":mcl_jukebox:record_"..identifier, {
 		description =
-			core.colorize("#55FFFF", S("Music Disc")) .. "\n" ..
-			core.colorize("#989898", S("@1—@2", recorddata[r][2], recorddata[r][1])),
-		_doc_items_create_entry = doc,
+			C(mcl_colors.AQUA, S("Music Disc")) .. "\n" ..
+			C(mcl_colors.GRAY, S("@1—@2", author, title)),
+		_doc_items_create_entry = true,
 		_doc_items_entry_name = entryname,
 		_doc_items_longdesc = longdesc,
 		_doc_items_usagehelp = usagehelp,
-		inventory_image = "mcl_jukebox_record_"..recorddata[r][3]..".png",
+		--inventory_image = "mcl_jukebox_record_"..recorddata[r][3]..".png",
+		inventory_image = image,
 		stack_max = 1,
-		groups = { music_record = r },
+		groups = { music_record = 1 },
 	})
 end
 
-local function now_playing(player, track_id)
+local function now_playing(player, name)
 	local playername = player:get_player_name()
 	local hud = active_huds[playername]
-	local text = S("Now playing: @1—@2", recorddata[track_id][2], recorddata[track_id][1])
+	local text = S("Now playing: @1—@2", mcl_jukebox.registered_records[name][2], mcl_jukebox.registered_records[name][1])
 
 	if not hud_sequence_numbers[playername] then
 		hud_sequence_numbers[playername] = 1
@@ -59,7 +48,7 @@ local function now_playing(player, track_id)
 	end
 
 	local id
-	if hud ~= nil then
+	if hud then
 		id = hud
 		player:hud_change(id, "text", text)
 	else
@@ -81,12 +70,11 @@ local function now_playing(player, track_id)
 		if not player or not player:is_player() or not active_huds[playername] or not hud_sequence_numbers[playername] or seq ~= hud_sequence_numbers[playername] then
 			return
 		end
-		if id ~= nil and id == active_huds[playername] then
+		if id and id == active_huds[playername] then
 			player:hud_remove(active_huds[playername])
 			active_huds[playername] = nil
 		end
 	end, {playername, id, hud_sequence_numbers[playername]})
-	
 end
 
 minetest.register_on_leaveplayer(function(player)
@@ -97,27 +85,29 @@ end)
 
 -- Jukebox crafting
 minetest.register_craft({
-	output = 'mcl_jukebox:jukebox',
+	output = "mcl_jukebox:jukebox",
 	recipe = {
-		{'group:wood', 'group:wood', 'group:wood'},
-		{'group:wood', 'mcl_core:diamond', 'group:wood'},
-		{'group:wood', 'group:wood', 'group:wood'},
+		{"group:wood", "group:wood", "group:wood"},
+		{"group:wood", "mcl_core:diamond", "group:wood"},
+		{"group:wood", "group:wood", "group:wood"},
 	}
 })
 
-local play_record = function(pos, itemstack, player)
-	local record_id = minetest.get_item_group(itemstack:get_name(), "music_record")
-	if record_id ~= 0 then
+local function play_record(pos, itemstack, player)
+	local item_name = itemstack:get_name()
+	-- ensure the jukebox uses the new record names for old records
+	local name = minetest.registered_aliases[item_name] or item_name
+	if mcl_jukebox.registered_records[name] then
 		local cname = player:get_player_name()
-		if active_tracks[cname] ~= nil then
+		if active_tracks[cname] then
 			minetest.sound_stop(active_tracks[cname])
 			active_tracks[cname] = nil
 		end
-		active_tracks[cname] = minetest.sound_play("mcl_jukebox_track_"..record_id, {
+		active_tracks[cname] = minetest.sound_play(mcl_jukebox.registered_records[name][5], {
 			to_player = cname,
 			gain = 1,
 		})
-		now_playing(player, record_id)
+		now_playing(player, name)
 		return true
 	end
 	return false
@@ -149,7 +139,7 @@ minetest.register_node("mcl_jukebox:jukebox", {
 		local inv = meta:get_inventory()
 		if not inv:is_empty("main") then
 			-- Jukebox contains a disc: Stop music and remove disc
-			if active_tracks[cname] ~= nil then
+			if active_tracks[cname] then
 				minetest.sound_stop(active_tracks[cname])
 			end
 			local lx = pos.x
@@ -160,11 +150,11 @@ minetest.register_node("mcl_jukebox:jukebox", {
 			-- Rotate record to match with “slot” texture
 			dropped_item:set_yaw(math.pi/2)
 			inv:set_stack("main", 1, "")
-			if active_tracks[cname] ~= nil then
+			if active_tracks[cname] then
 				minetest.sound_stop(active_tracks[cname])
 				active_tracks[cname] = nil
 			end
-			if active_huds[cname] ~= nil then
+			if active_huds[cname] then
 				clicker:hud_remove(active_huds[cname])
 				active_huds[cname] = nil
 			end
@@ -219,11 +209,11 @@ minetest.register_node("mcl_jukebox:jukebox", {
 			local dropped_item = minetest.add_item(p, stack)
 			-- Rotate record to match with “slot” texture
 			dropped_item:set_yaw(math.pi/2)
-			if active_tracks[name] ~= nil then
+			if active_tracks[name] then
 				minetest.sound_stop(active_tracks[name])
 				active_tracks[name] = nil
 			end
-			if active_huds[name] ~= nil then
+			if active_huds[name] then
 				digger:hud_remove(active_huds[name])
 				active_huds[name] = nil
 			end
@@ -239,3 +229,22 @@ minetest.register_craft({
 	recipe = "mcl_jukebox:jukebox",
 	burntime = 15,
 })
+
+mcl_jukebox.register_record("The Evil Sister (Jordach's Mix)", "SoundHelix", "13", "mcl_jukebox_record_13.png", "mcl_jukebox_track_1")
+mcl_jukebox.register_record("The Energetic Rat (Jordach's Mix)", "SoundHelix", "wait", "mcl_jukebox_record_wait.png", "mcl_jukebox_track_2")
+mcl_jukebox.register_record("Eastern Feeling", "Jordach", "blocks", "mcl_jukebox_record_blocks.png", "mcl_jukebox_track_3")
+mcl_jukebox.register_record("Minetest", "Jordach", "far", "mcl_jukebox_record_far.png", "mcl_jukebox_track_4")
+mcl_jukebox.register_record("Credit Roll (Jordach's HD Mix)", "Junichi Masuda", "chirp", "mcl_jukebox_record_chirp.png", "mcl_jukebox_track_5")
+mcl_jukebox.register_record("Winter Feeling", "Tom Peter", "strad", "mcl_jukebox_record_strad.png", "mcl_jukebox_track_6")
+mcl_jukebox.register_record("Synthgroove (Jordach's Mix)", "HeroOfTheWinds", "mellohi", "mcl_jukebox_record_mellohi.png", "mcl_jukebox_track_7")
+mcl_jukebox.register_record("The Clueless Frog (Jordach's Mix)", "SoundHelix", "mall", "mcl_jukebox_record_mall.png", "mcl_jukebox_track_8")
+
+--add backward compatibility
+minetest.register_alias("mcl_jukebox:record_1", "mcl_jukebox:record_13")
+minetest.register_alias("mcl_jukebox:record_2", "mcl_jukebox:record_wait")
+minetest.register_alias("mcl_jukebox:record_3", "mcl_jukebox:record_blocks")
+minetest.register_alias("mcl_jukebox:record_4", "mcl_jukebox:record_far")
+minetest.register_alias("mcl_jukebox:record_5", "mcl_jukebox:record_chirp")
+minetest.register_alias("mcl_jukebox:record_6", "mcl_jukebox:record_strad")
+minetest.register_alias("mcl_jukebox:record_7", "mcl_jukebox:record_mellohi")
+minetest.register_alias("mcl_jukebox:record_8", "mcl_jukebox:record_mall")

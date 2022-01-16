@@ -1,11 +1,13 @@
 -- Other nodes
-local S = minetest.get_translator("mcl_core")
+local S = minetest.get_translator(minetest.get_current_modname())
 
-local mod_screwdriver = minetest.get_modpath("screwdriver") ~= nil
+local mod_screwdriver = minetest.get_modpath("screwdriver")
+
 local on_rotate
 if mod_screwdriver then
 	on_rotate = screwdriver.rotate_3way
 end
+
 local alldirs = {{x=0,y=0,z=1}, {x=1,y=0,z=0}, {x=0,y=0,z=-1}, {x=-1,y=0,z=0}, {x=0,y=-1,z=0}, {x=0,y=1,z=0}}
 
 minetest.register_node("mcl_core:bone_block", {
@@ -31,7 +33,7 @@ minetest.register_node("mcl_core:slimeblock", {
 	node_box = {
 		type = "fixed",
 		fixed = {
-			{-0.25, -0.25, -0.25, 0.25, 0.25, 0.25}, 
+			{-0.25, -0.25, -0.25, 0.25, 0.25, 0.25},
 			{-0.5, -0.5, -0.5, 0.5, 0.5, 0.5},
 		}
 	},
@@ -39,7 +41,6 @@ minetest.register_node("mcl_core:slimeblock", {
 		type = "regular",
 	},
 	tiles = {"mcl_core_slime.png"},
-	paramtype = "light",
 	use_texture_alpha = minetest.features.use_texture_alpha_string_modes and "blend" or true,
 	stack_max = 64,
 	-- According to Minecraft Wiki, bouncing off a slime block from a height off 255 blocks should result in a bounce height of 50 blocks
@@ -53,7 +54,7 @@ minetest.register_node("mcl_core:slimeblock", {
 	},
 	_mcl_blast_resistance = 0,
 	_mcl_hardness = 0,
-	mvps_sticky = function (pos, node, piston_pos)
+	mvps_sticky = function(pos, node, piston_pos)
 		local connected = {}
 		for n, v in ipairs(alldirs) do
 			local neighbor_pos = vector.add(pos, v)
@@ -108,7 +109,7 @@ minetest.register_node("mcl_core:cobweb", {
 	liquid_renewable = false,
 	liquid_range = 0,
 	walkable = false,
-	groups = {swordy_cobweb=1,shearsy=1, fake_liquid=1, disable_jump=1, deco_block=1, dig_by_piston=1, dig_by_water=1,destroy_by_lava_flow=1,},
+	groups = {swordy_cobweb=1, shearsy_cobweb=1, fake_liquid=1, disable_jump=1, deco_block=1, dig_by_piston=1, dig_by_water=1,destroy_by_lava_flow=1,},
 	drop = "mcl_mobitems:string",
 	_mcl_shears_drop = true,
 	sounds = mcl_sounds.node_sound_leaves_defaults(),
@@ -173,7 +174,7 @@ minetest.register_node("mcl_core:barrier", {
 	drop = "",
 	_mcl_blast_resistance = 36000008,
 	_mcl_hardness = -1,
-	after_place_node = function (pos, placer, itemstack, pointed_thing)
+	after_place_node = function(pos, placer, itemstack, pointed_thing)
 		if placer == nil then
 			return
 		end
@@ -213,7 +214,7 @@ minetest.register_node("mcl_core:barrier", {
 -- Same as barrier, but non-pointable. This node is only to be used internally to separate realms.
 -- It must NOT be used for anything else.
 -- This node only exists because Minetest does not have support for “dimensions” yet and needs to
--- be removed when support for this is implemented. 
+-- be removed when support for this is implemented.
 minetest.register_node("mcl_core:realm_barrier", {
 	description = S("Realm Barrier"),
 	_doc_items_create_entry = false,
@@ -236,7 +237,7 @@ minetest.register_node("mcl_core:realm_barrier", {
 	-- Prevent placement to protect player from screwing up the world, because the node is not pointable and hard to get rid of.
 	node_placement_prediction = "",
 	on_place = function(pos, placer, itemstack, pointed_thing)
-		minetest.chat_send_player(placer:get_player_name(), minetest.colorize("#FF0000", "You can't just place a realm barrier by hand!"))
+		minetest.chat_send_player(placer:get_player_name(), minetest.colorize(mcl_colors.RED, "You can't just place a realm barrier by hand!"))
 		return
 	end,
 })
@@ -266,7 +267,7 @@ minetest.register_node("mcl_core:void", {
 	-- Prevent placement to protect player from screwing up the world, because the node is not pointable and hard to get rid of.
 	node_placement_prediction = "",
 	on_place = function(pos, placer, itemstack, pointed_thing)
-		minetest.chat_send_player(placer:get_player_name(), minetest.colorize("#FF0000", "You can't just place the void by hand!"))
+		minetest.chat_send_player(placer:get_player_name(), minetest.colorize(mcl_colors.RED, "You can't just place the void by hand!"))
 		return
 	end,
 	drop = "",

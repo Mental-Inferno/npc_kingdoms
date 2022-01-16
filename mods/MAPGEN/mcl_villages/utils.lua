@@ -1,28 +1,5 @@
-local c_dirt_with_grass             = minetest.get_content_id("mcl_core:dirt_with_grass")
-local c_dirt_with_snow              = minetest.get_content_id("mcl_core:dirt_with_grass_snow")
---local c_dirt_with_dry_grass         = minetest.get_content_id("mcl_core:dirt_with_dry_grass")
-local c_podzol                      = minetest.get_content_id("mcl_core:podzol")
-local c_sand                        = minetest.get_content_id("mcl_core:sand")
-local c_desert_sand                 = minetest.get_content_id("mcl_core:redsand")
---local c_silver_sand                 = minetest.get_content_id("mcl_core:silver_sand")
---
-local c_air                         = minetest.get_content_id("air")
-local c_snow                        = minetest.get_content_id("mcl_core:snow")
-local c_fern_1                      = minetest.get_content_id("mcl_flowers:fern")
-local c_fern_2                      = minetest.get_content_id("mcl_flowers:fern")
-local c_fern_3                      = minetest.get_content_id("mcl_flowers:fern")
-local c_rose                        = minetest.get_content_id("mcl_flowers:poppy")
-local c_viola                       = minetest.get_content_id("mcl_flowers:blue_orchid")
-local c_geranium                    = minetest.get_content_id("mcl_flowers:allium")
-local c_tulip                       = minetest.get_content_id("mcl_flowers:tulip_orange")
-local c_dandelion_y                 = minetest.get_content_id("mcl_flowers:dandelion")
-local c_dandelion_w                 = minetest.get_content_id("mcl_flowers:oxeye_daisy")
-local c_bush_leaves                 = minetest.get_content_id("mcl_core:leaves")
-local c_bush_stem                   = minetest.get_content_id("mcl_core:tree")
-local c_a_bush_leaves               = minetest.get_content_id("mcl_core:acacialeaves")
-local c_a_bush_stem                 = minetest.get_content_id("mcl_core:acaciatree")
-local c_water_source                = minetest.get_content_id("mcl_core:water_source")
-local c_water_flowing                = minetest.get_content_id("mcl_core:water_flowing")
+local get_node = mcl_vars.get_node
+
 -------------------------------------------------------------------------------
 -- function to copy tables
 -------------------------------------------------------------------------------
@@ -53,9 +30,9 @@ function settlements.find_surface(pos, wait)
 	-- check, in which direction to look for surface
 	local surface_node
 	if wait then
-		surface_node = mcl_mapgen_core.get_node(p6, true, 10000000)
+		surface_node = get_node(p6, true, 10000000)
 	else
-		surface_node = mcl_mapgen_core.get_node(p6)
+		surface_node = get_node(p6)
 	end
 	if surface_node.name=="air" or surface_node.name=="ignore" then
 		itter = -1
@@ -65,7 +42,7 @@ function settlements.find_surface(pos, wait)
 		-- Check Surface_node and Node above
 		--
 		if settlements.surface_mat[surface_node.name] then
-			local surface_node_plus_1 = mcl_mapgen_core.get_node({ x=p6.x, y=p6.y+1, z=p6.z})
+			local surface_node_plus_1 = get_node({ x=p6.x, y=p6.y+1, z=p6.z})
 			if surface_node_plus_1 and surface_node and
 				(string.find(surface_node_plus_1.name,"air") or
 				string.find(surface_node_plus_1.name,"snow") or
@@ -90,7 +67,7 @@ function settlements.find_surface(pos, wait)
 			return nil
 		end
 		cnt = cnt+1
-		surface_node = mcl_mapgen_core.get_node(p6)
+		surface_node = get_node(p6)
 	end
 	settlements.debug("find_surface5: cnt_max overflow")
 	return nil
@@ -149,7 +126,7 @@ function settlements.fill_chest(pos, pr)
 	-- fill chest
 	local inv = minetest.get_inventory( {type="node", pos=pos} )
 
-	local function get_treasures(pr)
+	local function get_treasures(prand)
 		local loottable = {{
 			stacks_min = 3,
 			stacks_max = 8,
@@ -173,7 +150,7 @@ function settlements.fill_chest(pos, pr)
 				{ itemstring = "mobs_mc:diamond_horse_armor", weight = 1 },
 			}
 		}}
-		local items = mcl_loot.get_multi_loot(loottable, pr)
+		local items = mcl_loot.get_multi_loot(loottable, prand)
 		return items
 	end
 
@@ -186,14 +163,14 @@ end
 -------------------------------------------------------------------------------
 function settlements.initialize_furnace(pos)
   -- find chests within radius
-  local furnacepos = minetest.find_node_near(pos, 
+  local furnacepos = minetest.find_node_near(pos,
     7, --radius
     {"mcl_furnaces:furnace"})
   -- initialize furnacepos (mts furnacepos don't have meta)
-  if furnacepos 
+  if furnacepos
   then
     local meta = minetest.get_meta(furnacepos)
-    if meta:get_string("infotext") ~= "furnace" 
+    if meta:get_string("infotext") ~= "furnace"
     then
       minetest.registered_nodes["mcl_furnaces:furnace"].on_construct(furnacepos)
     end
@@ -204,14 +181,14 @@ end
 -------------------------------------------------------------------------------
 function settlements.initialize_anvil(pos)
   -- find chests within radius
-  local anvilpos = minetest.find_node_near(pos, 
+  local anvilpos = minetest.find_node_near(pos,
     7, --radius
     {"mcl_anvils:anvil"})
   -- initialize anvilpos (mts anvilpos don't have meta)
-  if anvilpos 
+  if anvilpos
   then
     local meta = minetest.get_meta(anvilpos)
-    if meta:get_string("infotext") ~= "anvil" 
+    if meta:get_string("infotext") ~= "anvil"
     then
       minetest.registered_nodes["mcl_anvils:anvil"].on_construct(anvilpos)
     end
