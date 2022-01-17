@@ -542,14 +542,6 @@ if c("rotten_flesh") then
 end
 
 -- Misc.
-if c("nether_star") then
-	minetest.register_craftitem("mobs_mc:nether_star", {
-		description = "Nether Star",
-		_doc_items_longdesc = "A nether star is a crafting component. It is dropped from the Wither.",
-		inventory_image = "mcl_mobitems_nether_star.png"
-	})
-end
-
 if c("snowball") and minetest.get_modpath("default") then
 	minetest.register_craft({
 		output = "mobs_mc:snowball 2",

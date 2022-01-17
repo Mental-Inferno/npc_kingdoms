@@ -87,16 +87,6 @@ mcl_death_messages = {
 			plain = "@1 was roasted in dragon breath",
 			killer = "@1 was roasted in dragon breath by @2",
 		},
-		wither = {
-			_translator = S,
-			plain = "@1 withered away",
-			escape = "@1 withered away whilst fighting @2",
-		},
-		wither_skull = {
-			_translator = S,
-			plain = "@1 was killed by magic",
-			killer = "@1 was shot by a skull from @2",
-		},
 		anvil = {
 			_translator = S,
 			plain = "@1 was squashed by a falling anvil",

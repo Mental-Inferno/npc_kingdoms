@@ -42,13 +42,11 @@ local doll_size_overrides = {
 	["mobs_mc:enderman"] = { x = 0.8, y = 0.8 },
 	["mobs_mc:iron_golem"] = { x = 0.9, y = 0.9 },
 	["mobs_mc:ghast"] = { x = 1.05, y = 1.05 },
-	["mobs_mc:wither"] = { x = 1.2, y = 1.2 },
 	["mobs_mc:enderdragon"] = { x = 0.16, y = 0.16 },
 	["mobs_mc:witch"] = { x = 0.95, y = 0.95 },
 }
 local spawn_count_overrides = {
 	["mobs_mc:enderdragon"] = 1,
-	["mobs_mc:wither"] = 1,
 	["mobs_mc:ghast"] = 1,
 	["mobs_mc:guardian_elder"] = 1,
 	["mobs_mc:guardian"] = 2,

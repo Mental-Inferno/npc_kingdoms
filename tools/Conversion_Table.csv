@@ -742,14 +742,11 @@ Source path,Source file,Target path,Target file,xs,ys,xl,yl,xt,yt,Blacklisted?
 /assets/minecraft/textures/entity/shulker,shulker_white.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_shulker_white.png,,,,,,,y
 /assets/minecraft/textures/entity/shulker,shulker_yellow.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_shulker_yellow.png,,,,,,,y
 /assets/minecraft/textures/entity,silverfish.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_silverfish.png,,,,,,,
-/assets/minecraft/textures/entity/skeleton,skeleton.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_skeleton.png,,,,,,,
 /assets/minecraft/textures/entity/slime,slime.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_slime.png,,,,,,,
 /assets/minecraft/textures/entity,snowman.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_snowman.png,,,,,,,
 /assets/minecraft/textures/entity,spider_eyes.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_spider_eyes.png,,,,,,,
 /assets/minecraft/textures/entity/spider,spider.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_spider.png,,,,,,,
 /assets/minecraft/textures/entity,squid.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_squid.png,,,,,,,
-/assets/minecraft/textures/entity/skeleton,stray.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_stray.png,,,,,,,
-/assets/minecraft/textures/entity/skeleton,stray_overlay.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_stray_overlay.png,,,,,,,
 /assets/minecraft/textures/entity/villager,butcher.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_villager_butcher.png,,,,,,,
 /assets/minecraft/textures/entity/villager,farmer.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_villager_farmer.png,,,,,,,
 /assets/minecraft/textures/entity/villager,librarian.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_villager_librarian.png,,,,,,,
@@ -762,8 +759,6 @@ Source path,Source file,Target path,Target file,xs,ys,xl,yl,xt,yt,Blacklisted?
 /assets/minecraft/textures/entity/illager,evoker.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_evoker.png,,,,,,,
 /assets/minecraft/textures/entity/illager,illusionist.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_illusionist.png,,,,,,,
 /assets/minecraft/textures/entity,witch.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_witch.png,,,,,,,
-/assets/minecraft/textures/entity/wither,wither.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_wither.png,,,,,,,
-/assets/minecraft/textures/entity/skeleton,wither_skeleton.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_wither_skeleton.png,,,,,,,
 /assets/minecraft/textures/entity/wolf,wolf_angry.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_wolf_angry.png,,,,,,,
 /assets/minecraft/textures/entity/wolf,wolf_collar.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_wolf_collar.png,,,,,,,
 /assets/minecraft/textures/entity/wolf,wolf.png,/mods/ENTITIES/mobs_mc/textures,mobs_mc_wolf.png,,,,,,,

@@ -196,35 +196,12 @@ lightning.register_on_strike(function(pos, pos2, objects)
 	-- trigger revert of skybox
 	ttl = 0.1
 
-	-- Events caused by the lightning strike: Fire, damage, mob transformations, rare skeleton spawn
+	-- Events caused by the lightning strike: Fire, damage, mob transformations
 
 	pos2.y = pos2.y + 1/2
-	local skeleton_lightning = false
-	if rng:next(1,100) <= 3 then
-		skeleton_lightning = true
-	end
 	if get_item_group(get_node({ x = pos2.x, y = pos2.y - 1, z = pos2.z }).name, "liquid") < 1 then
 		if get_node(pos2).name == "air" then
-			-- Low chance for a lightning to spawn skeleton horse + skeletons
-			if skeleton_lightning then
-				add_entity(pos2, "mobs_mc:skeleton_horse")
-
-				local angle, posadd
-				angle = math.random(0, math.pi*2)
-				for i=1,3 do
-					posadd = { x=math.cos(angle),y=0,z=math.sin(angle) }
-					posadd = vector.normalize(posadd)
-					local mob = add_entity(vector.add(pos2, posadd), "mobs_mc:skeleton")
-					if mob then
-						mob:set_yaw(angle-math.pi/2)
-					end
-					angle = angle + (math.pi*2) / 3
-				end
-
-			-- Cause a fire
-			else
-				set_node(pos2, { name = "mcl_fire:fire" })
-			end
+			set_node(pos2, { name = "mcl_fire:fire" })
 		end
 	end
 end)

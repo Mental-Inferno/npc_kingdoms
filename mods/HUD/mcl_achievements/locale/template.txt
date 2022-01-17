@@ -16,7 +16,6 @@ Eat a cooked rabbit.=
 Get really desperate and eat rotten flesh.=
 Getting Wood=
 Getting an Upgrade=
-Hit a skeleton, wither skeleton or stray by bow and arrow from a distance of at least 20 meters.=
 Hot Topic=
 Into Fire=
 Into the Nether=

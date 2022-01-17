@@ -36,7 +36,6 @@ local function addhead(mobname, desc, longdesc)
 		-- FIXME: This code assumes 16×16 textures for the mob textures!
 		tiles = {
 			-- Note: bottom texture is overlaid over top texture to get rid of possible transparency.
-			-- This is required for skeleton skull and wither skeleton skull.
 			"[combine:16x16:-4,4=mobs_mc_"..mobname..".png", -- top
 			"([combine:16x16:-4,4=mobs_mc_"..mobname..".png)^([combine:16x16:-12,4=mobs_mc_"..mobname..".png)", -- bottom
 			"[combine:16x16:-12,0=mobs_mc_"..mobname..".png", -- left

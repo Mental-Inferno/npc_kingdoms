@@ -127,11 +127,6 @@ local patterns = {
 		{ d, e, d },
 		{ e, d, e },
 	},
-	["skull"] = {
-		name = N("@1 Skull Charge"),
-		type = "shapeless",
-		{ e, "mcl_heads:wither_skeleton", d },
-	},
 	["small_stripes"] = {
 		name = N("@1 Paly"),
 		{ d, e, d },

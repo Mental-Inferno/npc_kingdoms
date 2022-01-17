@@ -35,14 +35,11 @@ Want to include this mod in your game? Read `gameconfig.md`.
 ### Monsters
 
 * Husk
-* Skeleton
-* Stray
 * Creeper
 * Slime
 * Spider
 * Cave Spider
 * Enderman
-* Wither Skeleton
 * Magma Cube
 * Blaze
 * Ghast
@@ -55,7 +52,6 @@ Want to include this mod in your game? Read `gameconfig.md`.
 * Endermite
 * Shulker
 * Ender Dragon
-* Wither
 * Elder Guardian
 
 ### Peaceful mobs
@@ -73,7 +69,6 @@ Want to include this mod in your game? Read `gameconfig.md`.
 * Donkey
 * Llama
 * Mule
-* Skeleton Horse
 
 ### Helpful mobs
 

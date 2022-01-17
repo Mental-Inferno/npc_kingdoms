@@ -32,7 +32,6 @@ Origin of those models:
         * `mobs_mc_enderman_eyes.png`
         * `mobs_mc_enderman.png`
         * `mobs_mc_ghast.png`
-        * `mobs_mc_skeleton.png`
         * `mobs_mc_slime.png`
         * `mobs_mc_spider_eyes.png`
         * `mobs_mc_spider.png`
@@ -53,7 +52,6 @@ Origin of those models:
         * `mobs_mc_illusionist.png`
         * `mobs_mc_vindicator_axe.png`
         * `mobs_mc_vindicator_base.png`
-        * `mobs_mc_horse_skeleton.png`
     * Additions by kingoscargames:
         * `mobs_mc_vex.png`
         * `mobs_mc_vex_charging.png`
@@ -66,9 +64,6 @@ Origin of those models:
         * `mobs_mc_endermite.png`
         * `mobs_mc_magmacube.png`
         * `mobs_mc_chicken.png`
-        * `mobs_mc_wither.png`
-        * `mobs_mc_wither_skeleton.png`
-        * `mobs_mc_TEMP_wither_projectile.png`	
     * Gerold55
         * `mobs_mc_mooshroom_brown.png` (CC0)
         * `mobs_mc_mushroom_brown.png` (CC0)
@@ -114,9 +109,6 @@ Origin of those models:
         * Source: <https://freesound.org/people/Hitrison/sounds/251411/>
 * [NPXcoot](https://github.com/NPXcoot1) (CC BY-SA 4.0)
     * `mobs_mc_ender_dragon_*`
-* [bevibeldesign](https://freesound.org/people/bevibeldesign/)
-    * `mobs_mc_wither_spawn.ogg` (CC0)
-        * Source: <https://freesound.org/people/bevibeldesign/sounds/366095/>
 * [rubberduck](https://opengameart.org/users/rubberduck)
     * `mobs_mc_endermite_*.ogg` (CC0)
     * `mobs_mc_enderman_teleport_*.ogg` (CC0)
@@ -180,16 +172,6 @@ Origin of those models:
 * [Spennnyyy](https://freesound.org/people/Spennnyyy/) (CC0)
     * `mcl_totems_totem.ogg`
         * Source: <https://freesound.org/people/Spennnyyy/sounds/323502/>
-* [Baŝto](https://opengameart.org/users/ba%C5%9Dto) (remixer) and [kantouth](https://freesound.org/people/kantouth/) (original author)
-    * `mobs_mc_skeleton_random.*.ogg` (CC BY 3.0)
-        * Source: <https://opengameart.org/content/walking-skeleton>
-            * Based on:  <https://freesound.org/people/kantouth/sounds/115113/>
-* [spookymodem](https://freesound.org/people/spookymodem/)
-    * `mobs_mc_skeleton_death.ogg` (CC0)
-        * <https://freesound.org/people/spookymodem/sounds/202091/>
-* [Cribbler](https://freesound.org/people/Cribbler/)
-    * `mobs_mc_skeleton_hurt.ogg` (CC0)
-        * Source: <https://freesound.org/people/Cribbler/sounds/381859/>
 * [GoodListener](https://freesound.org/people/GoodListener/)
     * `mobs_mc_horse_random.1.ogg` (CC BY 3.0)
         * Source: <https://freesound.org/people/GoodListener/sounds/322454/>

@@ -21,7 +21,7 @@ end
 local same_id = {
     enchanting = { "table" },
     experience = { "bottle" },
-    heads = { "skeleton", "creeper", "wither_skeleton" },
+    heads = { "creeper" },
     mobitems = { "rabbit", "chicken" },
     walls = {
         "andesite", "brick", "cobble", "diorite", "endbricks",

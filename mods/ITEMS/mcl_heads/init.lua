@@ -46,7 +46,6 @@ local function addhead(name, texture, desc, longdesc, rangemob, rangefactor)
 		-- The head textures are based off the textures of an actual mob.
 		tiles = {
 			-- Note: bottom texture is overlaid over top texture to get rid of possible transparency.
-			-- This is required for skeleton skull and wither skeleton skull.
 			"[combine:16x16:-4,4="..texture, -- top
 			"([combine:16x16:-4,4="..texture..")^([combine:16x16:-12,4="..texture..")", -- bottom
 			"[combine:16x16:-12,0="..texture, -- left
