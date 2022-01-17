@@ -57,7 +57,6 @@ mobs_mc.items = {
 	arrow = "mobs_mc:arrow",
 	bow = "mobs_mc:bow_wood",
 	head_creeper = "mobs_mc:head_creeper",
-	head_zombie = "mobs_mc:head_zombie",
 	head_skeleton = "mobs_mc:head_skeleton",
 	head_wither_skeleton = "mobs_mc:head_wither_skeleton",
 

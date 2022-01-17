@@ -36,7 +36,7 @@ end
 
 -- Helper functions to determine equipment rules
 local can_equip_horse_armor = function(entity_id)
-	return entity_id == "mobs_mc:horse" or entity_id == "mobs_mc:skeleton_horse" or entity_id == "mobs_mc:zombie_horse"
+	return entity_id == "mobs_mc:horse"
 end
 --[[local can_equip_chest = function(entity_id)
 	return entity_id == "mobs_mc:mule" or entity_id == "mobs_mc:donkey"
@@ -576,6 +576,5 @@ mobs_mc.spawn_height.overworld_max)
 -- spawn eggs
 mobs:register_egg("mobs_mc:horse", S("Horse"), "mobs_mc_spawn_icon_horse.png", 0)
 mobs:register_egg("mobs_mc:skeleton_horse", S("Skeleton Horse"), "mobs_mc_spawn_icon_horse_skeleton.png", 0)
---mobs:register_egg("mobs_mc:zombie_horse", S("Zombie Horse"), "mobs_mc_spawn_icon_horse_zombie.png", 0)
 mobs:register_egg("mobs_mc:donkey", S("Donkey"), "mobs_mc_spawn_icon_donkey.png", 0)
 mobs:register_egg("mobs_mc:mule", S("Mule"), "mobs_mc_spawn_icon_mule.png", 0)

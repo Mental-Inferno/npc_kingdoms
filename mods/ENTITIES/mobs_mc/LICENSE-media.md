@@ -37,7 +37,6 @@ Origin of those models:
         * `mobs_mc_spider_eyes.png`
         * `mobs_mc_spider.png`
         * `mobs_mc_squid.png`
-        * `mobs_mc_zombie.png`
         * `mobs_mc_villager_butcher.png`
         * `mobs_mc_villager_farmer.png`
         * `mobs_mc_villager_librarian.png`
@@ -120,7 +119,6 @@ Origin of those models:
         * Source: <https://freesound.org/people/bevibeldesign/sounds/366095/>
 * [rubberduck](https://opengameart.org/users/rubberduck)
     * `mobs_mc_endermite_*.ogg` (CC0)
-    * `mobs_mc_zombiepig_*.ogg` (CC0)
     * `mobs_mc_enderman_teleport_*.ogg` (CC0)
         * Source 1: <https://opengameart.org/content/80-cc0-creature-sfx>
         * Source 2: <https://opengameart.org/content/80-cc0-creture-sfx-2>
@@ -179,14 +177,6 @@ Origin of those models:
         * Source: <https://freesound.org/people/columbia23/sounds/395395/>
 * BrandonReese (LGPL v2.1)
     * `mobs_eerie.ogg`
-* [Under7dude](https://freesound.org/people/Under7dude/) (CC0)
-    * `mobs_mc_zombie_growl.ogg`
-        * Source: <https://freesound.org/people/Under7dude/sounds/163445/>
-* [haratman](https://freesound.org/people/haratman/) (CC0)
-    * `mobs_mc_zombie_death.ogg`
-        * Source: <https://freesound.org/people/haratman/sounds/393749/>
-    * `mobs_mc_zombie_hurt.ogg`
-        * Source: <https://freesound.org/people/haratman/sounds/393749/>
 * [Spennnyyy](https://freesound.org/people/Spennnyyy/) (CC0)
     * `mcl_totems_totem.ogg`
         * Source: <https://freesound.org/people/Spennnyyy/sounds/323502/>

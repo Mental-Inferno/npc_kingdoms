@@ -278,7 +278,7 @@ end
 function mcl_structures.generate_igloo_basement(pos, orientation, pr)
 	-- TODO: Add brewing stand
 	-- TODO: Add monster eggs
-	-- TODO: Spawn villager and zombie villager
+	-- TODO: Spawn villager
 	local path = modpath.."/schematics/mcl_structures_igloo_basement.mts"
 	mcl_structures.place_schematic(pos, path, orientation, nil, true, nil, igloo_placement_callback, pr)
 end

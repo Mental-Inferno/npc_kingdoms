@@ -35,7 +35,6 @@ mobs_mc.override.items = {
 	snow_block = "mcl_core:snowblock",
 	arrow = "mcl_bows:arrow",
 	bow = "mcl_bows:bow",
-	head_zombie = "mcl_heads:zombie",
 	head_creeper = "mcl_heads:creeper",
 	head_skeleton = "mcl_heads:skeleton",
 	head_wither_skeleton = "mcl_heads:wither_skeleton",

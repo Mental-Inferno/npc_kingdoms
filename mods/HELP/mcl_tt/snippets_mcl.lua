@@ -98,11 +98,7 @@ tt.register_snippet(function(itemstring)
 end)
 
 tt.register_snippet(function(itemstring)
-	if itemstring == "mcl_heads:zombie" then
-		return S("Zombie view range: -50%")
-	elseif itemstring == "mcl_heads:skeleton" then
-		return S("Skeleton view range: -50%")
-	elseif itemstring == "mcl_heads:creeper" then
+	if itemstring == "mcl_heads:creeper" then
 		return S("Creeper view range: -50%")
 	end
 end)

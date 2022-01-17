@@ -5,7 +5,7 @@ This mod adds mobs which closely resemble the mobs from the game Minecraft, vers
 ## Credits
 
 * [maikerumine](https://github.com/maikerumine): Coding behaviour, spawning, drops, and misc.
-* [Wuzzy2](https://github.com/Wuzzy2): Zombies, husks, item textures, and code
+* [Wuzzy2](https://github.com/Wuzzy2): husks, item textures, and code
 * [toby109tt](https://github.com/tobyplowy): Mapping fixes - better 2D planes
 * [22i](https://github.com/22i): Models (done in Blender) and mob icons for spawn eggs
 * [XSSheep](https://www.planetminecraft.com/member/xssheep/): Mob and item textures (from [Pixel Perfection](https://www.planetminecraft.com/texture_pack/131pixel-perfection/))
@@ -34,7 +34,6 @@ Want to include this mod in your game? Read `gameconfig.md`.
 
 ### Monsters
 
-* Zombie
 * Husk
 * Skeleton
 * Stray
@@ -43,8 +42,6 @@ Want to include this mod in your game? Read `gameconfig.md`.
 * Spider
 * Cave Spider
 * Enderman
-* Zombie Villager
-* Zombie Pigman
 * Wither Skeleton
 * Magma Cube
 * Blaze
@@ -77,7 +74,6 @@ Want to include this mod in your game? Read `gameconfig.md`.
 * Llama
 * Mule
 * Skeleton Horse
-* Zombie Horse
 
 ### Helpful mobs
 
